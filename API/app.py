@@ -7,6 +7,8 @@ import config
 
 import sys
 
+import bcrypt
+
 import random
 import string
 
@@ -32,8 +34,6 @@ def home():
     )"""
     client = MongoClient(host=config.MONGO_API)
     dblist = client.list_database_names()
-    print('ok', file=sys.stderr)
-    print(dblist, file=sys.stderr)
     mydb = client['flipboard']
     mycol = mydb["customers"]
     mydict = { "name": "John", "address": "Highway 37" }
@@ -43,27 +43,49 @@ def home():
         return jsonify({'success': False, 'message': 'please log in'})
     return jsonify({'success': True})
 
-"""@app.route('/register', methods=['POST'])
+def generate_unique_login():
+    unique_login = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(1))
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    existing_user = users.find_one({'unique_login': unique_login})
+    while existing_user is not None:
+        unique_login = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(1))
+        existing_user = users.find_one({'unique_login': unique_login})
+    return unique_login
+
+@app.route('/register', methods=['POST'])
 def register():
-    if not all(_ in request.json for _ in ('password', 'username', 'email')):
+    if not all(_ in request.json for _ in ('password', 'username')):
         return jsonify({'success': False, 'message': 'Please provide all informations'})
-    if db.Database().add_user(request.json['username'], request.json['email'], request.json['password']):
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    existing_user = users.find_one({'username': request.json['username']})
+    if existing_user is None:
+        hashpass = bcrypt.hashpw(request.json['password'].encode('utf-8'), bcrypt.gensalt())
+        users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': generate_unique_login()})
         return jsonify({'success': True, 'message': 'Registered successfully'})
-    return jsonify({'success': False, 'message': 'The username or the email exists'})
+    return jsonify({'success': False, 'message': 'The username exists'})
 
 @app.route('/login', methods=['POST'])
 def login():
-    if not all(_ in request.json for _ in ('password', 'email')):
+    if not all(_ in request.json for _ in ('password', 'username')):
         return jsonify({'success': False, 'message': 'please provide all informations'})
-    if db.Database().check_password(request.json['email'], request.json['password']):
-        username, unique_login = db.Database().get_username_unique_login_from_email(request.json['email'])
-        return jsonify({'success': True, 'message': 'Successfully logged in', 'username': username, 'unique_login': unique_login})
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    login_user = users.find_one({'username': request.json['username']})
+    if login_user:
+        if bcrypt.hashpw(request.json['password'].encode('utf-8'), login_user['password']) == login_user['password']:
+            return jsonify({'success': True, 'message': 'Successfully logged in', 'username': login_user['username'], 'unique_login': login_user['unique_login']})
     return jsonify({'success': False, 'message': 'username or password is false'})
 
 @app.route('/logout', methods=['POST'])
 def logout():
     return jsonify({'success': True, 'message': 'Successfully logged out'})
 
+"""
 @app.route('/update_username', methods=['POST'])
 def update_username():
     username = get_username(request.headers)
