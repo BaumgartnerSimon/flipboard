@@ -79,7 +79,7 @@ def login():
     if login_user:
         if bcrypt.hashpw(request.json['password'].encode('utf-8'), login_user['password']) == login_user['password']:
             return jsonify({'success': True, 'message': 'Successfully logged in', 'username': login_user['username'], 'unique_login': login_user['unique_login']})
-    return jsonify({'success': False, 'message': 'username or password is false'})
+    return jsonify({'success': False, 'message': 'Wrong username or password'})
 
 @app.route('/logout', methods=['POST'])
 def logout():
