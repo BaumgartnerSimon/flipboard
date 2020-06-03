@@ -1,3 +1,5 @@
+import mynews
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -27,13 +29,16 @@ app.config["SECRET_KEY"] = ''.join(random.SystemRandom().choice(string.ascii_upp
 CORS(app)
 
 def get_username(header):
-    if 'unique_login' not in header:
+    try:
+        if 'unique_login' not in header:
+            return None
+        client = MongoClient(host=config.MONGO_API)
+        mydb = client['flipboard']
+        users = mydb.users
+        existing_user = users.find_one({'unique_login': header['unique_login']})
+        return existing_user['username']
+    except:
         return None
-    client = MongoClient(host=config.MONGO_API)
-    mydb = client['flipboard']
-    users = mydb.users
-    existing_user = users.find_one({'unique_login': header['unique_login']})
-    return existing_user['username']#db.Database().get_username_from_unique_login(header['unique_login'])
 
 def is_logged_in(header):
     if get_username(header) is None:
@@ -102,11 +107,15 @@ def update_username():
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
-    ##check si le mdp est bon!!!
-    myquery = {'unique_login': request.headers['unique_login']}
-    newvalues = {'$set': {'username': request.json['new_username']}}
-    users.update_one(myquery, newvalues)
-    return jsonify({'success': True, 'message': 'Successfully updated username'})
+
+    login_user = users.find_one({'username': old_username})
+    if login_user:
+        if bcrypt.hashpw(request.json['password'].encode('utf-8'), login_user['password']) == login_user['password']:
+            myquery = {'unique_login': request.headers['unique_login']}
+            newvalues = {'$set': {'username': request.json['new_username']}}
+            users.update_one(myquery, newvalues)
+            return jsonify({'success': True, 'message': 'Successfully updated username'})
+    return jsonify({'success': False, 'message': 'Could not update username'})
 
 @app.route('/update_password', methods=['POST'])
 def update_password():
@@ -120,13 +129,15 @@ def update_password():
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
-    #old_password = users.
-    ##check si le mdp est bon!!!
-    hashpass = bcrypt.hashpw(request.json['new_password'].encode('utf-8'), bcrypt.gensalt())
-    myquery = {'unique_login': request.headers['unique_login']}
-    newvalues = {'$set': {'password': hashpass}}
-    users.update_one(myquery, newvalues)
-    return jsonify({'success': False, 'message': 'Wrong username or password'})
+    login_user = users.find_one({'username': username})
+    if login_user:
+        if bcrypt.hashpw(request.json['old_password'].encode('utf-8'), login_user['password']) == login_user['password']:
+            hashpass = bcrypt.hashpw(request.json['new_password'].encode('utf-8'), bcrypt.gensalt())
+            myquery = {'unique_login': request.headers['unique_login']}
+            newvalues = {'$set': {'password': hashpass}}
+            users.update_one(myquery, newvalues)
+            return jsonify({'success': True, 'message': 'Updated password'})
+    return jsonify({'success': False, 'message': 'Could not update password'})
 
 ##follow magazine
 ##follow user
