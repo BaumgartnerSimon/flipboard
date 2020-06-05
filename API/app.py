@@ -6,6 +6,7 @@ from flask_cors import CORS
 from pymongo import MongoClient
 
 import config
+import utils
 
 import sys
 
@@ -28,15 +29,20 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(128))
 CORS(app)
 
-def get_username(header):
+def get_user(header):
     try:
         if 'unique_login' not in header:
             return None
         client = MongoClient(host=config.MONGO_API)
         mydb = client['flipboard']
         users = mydb.users
-        existing_user = users.find_one({'unique_login': header['unique_login']})
-        return existing_user['username']
+        return users.find_one({'unique_login': header['unique_login']})
+    except:
+        return None
+
+def get_username(header):
+    try:
+        return get_user(header)['username']
     except:
         return None
 
@@ -53,17 +59,6 @@ def home():
 def about():
     return jsonify({'success': True, 'data': {'a': 'b'}})
 
-def generate_unique_login(size=15):
-    unique_login = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-    client = MongoClient(host=config.MONGO_API)
-    mydb = client['flipboard']
-    users = mydb.users
-    existing_user = users.find_one({'unique_login': unique_login})
-    while existing_user is not None:
-        unique_login = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-        existing_user = users.find_one({'unique_login': unique_login})
-    return unique_login
-
 @app.route('/register', methods=['POST'])
 def register():
     if not all(_ in request.json for _ in ('password', 'username')):
@@ -74,7 +69,7 @@ def register():
     existing_user = users.find_one({'username': request.json['username']})
     if existing_user is None:
         hashpass = bcrypt.hashpw(request.json['password'].encode('utf-8'), bcrypt.gensalt())
-        users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': generate_unique_login()})
+        users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': utils.generate_unique_login()})
         return jsonify({'success': True, 'message': 'Registered successfully'})
     return jsonify({'success': False, 'message': 'The username exists'})
 
@@ -97,7 +92,7 @@ def logout():
 
 @app.route('/update_username', methods=['POST'])
 def update_username():
-    if not all(_ in request.json for _ in ('password', 'new_username')):
+    if not all(_ in request.json for _ in ('new_username',)):
         return jsonify({'success': False, 'message': 'please provide all informations'})
     old_username = get_username(request.headers)
     if old_username is None:
@@ -110,11 +105,10 @@ def update_username():
 
     login_user = users.find_one({'username': old_username})
     if login_user:
-        if bcrypt.hashpw(request.json['password'].encode('utf-8'), login_user['password']) == login_user['password']:
-            myquery = {'unique_login': request.headers['unique_login']}
-            newvalues = {'$set': {'username': request.json['new_username']}}
-            users.update_one(myquery, newvalues)
-            return jsonify({'success': True, 'message': 'Successfully updated username'})
+        myquery = {'unique_login': request.headers['unique_login']}
+        newvalues = {'$set': {'username': request.json['new_username']}}
+        users.update_one(myquery, newvalues)
+        return jsonify({'success': True, 'message': 'Successfully updated username'})
     return jsonify({'success': False, 'message': 'Could not update username'})
 
 @app.route('/update_password', methods=['POST'])
@@ -151,22 +145,23 @@ def update_password():
 def add_magazine():
     if not all(_ in request.json for _ in ('title', 'description', 'public')):
         return jsonify({'success': False, 'message': 'please provide all informations'})
-    username = get_username(request.headers)
-    if username is None:
+    user = get_user(request.headers)
+    if user is None:
         return jsonify({'success': False, 'message': 'Please log in'})
+    print(f"user: {user}", file=sys.stderr)
     ##liked
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     magazines = mydb.magazines
-    magazines.insert({'title': request.json['title'], 'description': request.json['description'], 'public': request.json['public']})#####author + date created
+    magazines.insert({'title': request.json['title'], 'description': request.json['description'], 'public': request.json['public'], 'author': user['unique_login']})#####date created
     return jsonify({'success': True, 'message': 'Successfully added new magazine'})
 
 @app.route('/flip_to_magazine', methods=['POST'])
 def flip_to_magazine():
     if not all(_ in request.json for _ in ('magazine_id', 'link', 'comment')):
         return jsonify({'success': False, 'message': 'please provide all informations'})
-    username = get_username(request.headers)
-    if username is None:
+    user = get_user(request.headers)
+    if user is None:
         return jsonify({'success': False, 'message': 'Please log in'})
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
@@ -175,7 +170,7 @@ def flip_to_magazine():
     existing_magazine = magazines.find_one({'_id': bson.objectid.ObjectId(request.json['magazine_id'])})
     if existing_magazine is None:
         return jsonify({'success': False, 'message': 'Magazine_id is wrong'})
-    flips.insert({'magazine_id': request.json['magazine_id'], 'link': request.json['link'], 'comment': request.json['comment']})##author + date created
+    flips.insert({'magazine_id': request.json['magazine_id'], 'link': request.json['link'], 'comment': request.json['comment'], 'author': user['unique_login']})##date created
     return jsonify({'success': True, 'message': 'Successfully flipped to magazine'})
 
 @app.route('/get_magazines', methods=['GET'])
