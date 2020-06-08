@@ -12,12 +12,18 @@ import bcrypt
 def get_articles_from_source(source):
     page = 1
     pageSize = 100
-    error = True
+    url = (f"https://newsapi.org/v2/everything?sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
+    print(f"url: {url}", file=sys.stderr)
+    response = requests.get(url)
+    #error = True if response.json()['status'] != 'ok' else False
+    print(f"results: {response.json()}")#, file=sys.stderr)
+    return response.json()['articles']
+    """error = True
     while error:
         url = (f"https://newsapi.org/v2/everything?sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
         response = requests.get(url)
         error = True if response.json()['status'] != 'ok' else False
-        print(f"results: {response.json()}")#, file=sys.stderr)
+        print(f"results: {response.json()}")#, file=sys.stderr)"""
 
 """
 ##pas possible il faut un compte payant
@@ -66,7 +72,44 @@ while error:
         existing_user = users.find_one({'username': source['name']})
         if existing_user is None:
             hashpass = bcrypt.hashpw('admin'.encode('utf-8'), bcrypt.gensalt())
-            users.insert({'username': source['name'], 'password': hashpass, 'unique_login': utils.generate_unique_login()})
+            unique_login = utils.generate_unique_login()
+            users.insert({'username': source['name'], 'password': hashpass, 'unique_login': unique_login, 'verified': True, 'favorites': []})
+            magazines = mydb.magazines
+            _id = str(magazines.insert({'title': source['name'], 'description': source['description'], 'public': True, 'author': unique_login}))#####date created
+            try:
+                articles = get_articles_from_source(source['id'])
+                flips = mydb.flips
+                for article in articles:
+                    print({'magazine_id': _id,
+                           'link': article['url'],
+                           'comment': '',
+                           'author': unique_login,
+                           'image_link': article['urlToImage'],
+                           'title': article['title'],
+                           'description': article['description']
+                    }, file=sys.stderr)
+                    flips.insert({'magazine_id': _id,
+                                  'link': article['url'],
+                                  'comment': '',
+                                  'author': unique_login,
+                                  'image_link': article['urlToImage'],
+                                  'title': article['title'],
+                                  'description': article['description']
+                    })## + date created"""
+
+            except Exception as e:
+                print(e, file=sys.stderr)
+                continue
+            #print(f'_id: {_id}')
+            """source id, name
+            author
+            title
+            description
+            url
+            urlToImage
+            publishedAt
+            content"""
+            ###flip les articles
     print(categories, file=sys.stderr)
 
 

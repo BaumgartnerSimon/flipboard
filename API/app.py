@@ -69,7 +69,7 @@ def register():
     existing_user = users.find_one({'username': request.json['username']})
     if existing_user is None:
         hashpass = bcrypt.hashpw(request.json['password'].encode('utf-8'), bcrypt.gensalt())
-        users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': utils.generate_unique_login()})
+        users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': utils.generate_unique_login(), 'veified': False, 'favorites': []})
         return jsonify({'success': True, 'message': 'Registered successfully'})
     return jsonify({'success': False, 'message': 'The username exists'})
 
@@ -181,16 +181,79 @@ def get_magazines():
     magazines = mydb.magazines
     flips = mydb.flips
     all_magazines = []
-    for doc in magazines.find():
+    for doc in magazines.find({'public': True}):
         doc['_id'] = str(doc['_id'])
+        users = mydb.users
+        doc['author'] = users.find_one({'unique_login': doc['author']})['username']
         doc['flips'] = []
         for d in flips.find({'magazine_id': doc['_id']}):
             d['_id'] = str(d['_id'])
             doc['flips'].append(d)
         #print(doc['flips'], file=sys.stderr)
         all_magazines.append(doc)
+
+    priv_magazines = []
+    user = get_user(request.headers)
+    if user is not None:
+        for doc in magazines.find({'public': False, 'author': user['unique_login']}):
+            doc['_id'] = str(doc['_id'])
+            users = mydb.users
+            doc['author'] = users.find_one({'unique_login': doc['author']})['username']
+            doc['flips'] = []
+            for d in flips.find({'magazine_id': doc['_id']}):
+                d['_id'] = str(d['_id'])
+                doc['flips'].append(d)
+            #print(doc['flips'], file=sys.stderr)
+            priv_magazines.append(doc)
     #print(all_magazines, file=sys.stderr)
-    return jsonify({'success': True, 'message': 'Success', 'magazines': all_magazines})
+    return jsonify({'success': True, 'message': 'Success', 'magazines': all_magazines, 'private_magazines': priv_magazines})
+
+@app.route('/add_favorite', methods=['POST'])
+def add_favorite():
+    if not all(_ in request.json for _ in ('topic',)):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    favorites = user['favorites']
+    if request.json['topic'] in favorites:
+        return jsonify({'success': False, 'message': 'Already in favorite'})
+    ##verifier que le topic est dans la liste de topics
+    favorites.append(request.json['topic'])
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    myquery = {'unique_login': request.headers['unique_login']}
+    newvalues = {'$set': {'favorites': favorites}}
+    users.update_one(myquery, newvalues)
+    return jsonify({'success': True, 'message': 'Successfully added favorite'})
+
+@app.route('/remove_favorite', methods=['POST'])
+def remove_favorite():
+    if not all(_ in request.json for _ in ('topic',)):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    favorites = user['favorites']
+    if not (request.json['topic'] in favorites):
+        return jsonify({'success': False, 'message': 'Favotite not found'})
+    favorites.remove(request.json['topic'])
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    myquery = {'unique_login': request.headers['unique_login']}
+    newvalues = {'$set': {'favorites': favorites}}
+    users.update_one(myquery, newvalues)
+    return jsonify({'success': True, 'message': 'Successfully removed favorite'})
+
+@app.route('/get_favorites', methods=['GET'])
+def get_favorites():
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    favorites = user['favorites']
+    return jsonify({'success': True, 'message': 'ok', 'favorites': favorites})
 
 
 if __name__ == "__main__":
