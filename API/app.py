@@ -7,6 +7,7 @@ from pymongo import MongoClient
 
 import config
 import utils
+import summary
 
 import sys
 
@@ -20,9 +21,6 @@ import bson
 #magazine privé public, liste, lien / article -> récupérer
 #links
 #topic -> ajouter liste
-
-
-##passions -> news, technology, sports, business, politics, celebrity news, recipes, science, design, weather, women's news, photography, compuer science, travel, healthy eating, fashion, beauty, mindfulness, world economy, sustainability, street art, music, music festivals, tv, movies, cool stuff, workouts, home, classical music, fortune 500, gaming, electric vehicles, leadership, food & dining, national parks, startups, health, digital photography, breakthroughs, autos, advertising, road trips, books, running, foreign policy, education, new york city, architecture, yoga, dogs, parenting, basketball, entrepreneurship, tiny house movement, middle east, self-improvement, cycling, us congress apps, star wars, personal finance, diy, sleep, green living, nfl, space, coffee, outdoors, gardening, how-to's, writing, crafting, motorsport, weddings, interior design, memes, work-life balance
 
 
 app = Flask(__name__)
@@ -57,7 +55,30 @@ def home():
 
 @app.route('/about.json', methods=['GET'])
 def about():
-    return jsonify({'success': True, 'data': {'a': 'b'}})
+    return jsonify({
+        'success': True,
+        'data': {
+            'favorites': ['news', 'technology', 'sports', 'business', 'politics',
+                          'celebrity news', 'recipes', 'science', 'design', 'weather',
+                          "women's news", 'photography', 'compuer science', 'travel',
+                          'healthy eating', 'fashion', 'beauty', 'mindfulness',
+                          'world economy', 'sustainability', 'street art', 'music',
+                          'music festivals', 'tv', 'movies', 'cool stuff', 'workouts',
+                          'home', 'classical music', 'fortune 500', 'gaming',
+                          'electric vehicles', 'leadership', 'food & dining',
+                          'national parks', 'startups', 'health', 'digital photography',
+                          'breakthroughs', 'autos', 'advertising', 'road trips', 'books',
+                          'running', 'foreign policy', 'education', 'new york city',
+                          'architecture', 'yoga', 'dogs', 'parenting', 'basketball',
+                          'entrepreneurship', 'tiny house movement', 'middle east',
+                          'self-improvement', 'cycling', 'us congress apps', 'star wars',
+                          'personal finance', 'diy', 'sleep', 'green living', 'nfl',
+                          'space', 'coffee', 'outdoors', 'gardening', "how-to's", 'writing',
+                          'crafting', 'motorsport', 'weddings', 'interior design', 'memes',
+                          'work-life balance'
+            ]
+        }
+    })
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -170,7 +191,31 @@ def flip_to_magazine():
     existing_magazine = magazines.find_one({'_id': bson.objectid.ObjectId(request.json['magazine_id'])})
     if existing_magazine is None:
         return jsonify({'success': False, 'message': 'Magazine_id is wrong'})
-    flips.insert({'magazine_id': request.json['magazine_id'], 'link': request.json['link'], 'comment': request.json['comment'], 'author': user['unique_login']})##date created
+
+    image_link = ''
+    title = ''
+    description = ''
+    try:
+        s = summary.Summary(request.json['link'])
+        s.extract()
+        image_link = str(s.image)
+        title = str(s.title)
+        description = str(s.description)
+        print(f"Title: {s.title}", file=sys.stderr)
+        print(f"Description: {s.description}", file=sys.stderr)
+        print(f"Image: {s.image}", file=sys.stderr)
+    except:
+        pass
+
+    flips.insert({
+        'magazine_id': request.json['magazine_id'],
+        'link': request.json['link'],
+        'comment': request.json['comment'],
+        'author': user['unique_login'],
+        'image_link': image_link,
+        'title': title,
+        'description': description
+    })##date created
     return jsonify({'success': True, 'message': 'Successfully flipped to magazine'})
 
 @app.route('/get_magazines', methods=['GET'])

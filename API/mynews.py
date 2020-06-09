@@ -8,6 +8,8 @@ from pymongo import MongoClient
 import bcrypt
 
 #{'general': 41, 'technology': 10, 'business': 7, 'sports': 11, 'entertainment': 8, 'health': 1, 'science': 3}
+##https://stackoverflow.com/questions/8897593/how-to-compute-the-similarity-between-two-text-documents
+##
 
 def get_articles_from_source(source):
     page = 1
