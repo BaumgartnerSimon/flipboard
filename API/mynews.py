@@ -7,6 +7,8 @@ import utils
 from pymongo import MongoClient
 import bcrypt
 
+import datetime
+
 #{'general': 41, 'technology': 10, 'business': 7, 'sports': 11, 'entertainment': 8, 'health': 1, 'science': 3}
 ##https://stackoverflow.com/questions/8897593/how-to-compute-the-similarity-between-two-text-documents
 ##
@@ -96,7 +98,8 @@ while error:
                                   'author': unique_login,
                                   'image_link': article['urlToImage'],
                                   'title': article['title'],
-                                  'description': article['description']
+                                  'description': article['description'],
+                                  'date_created': datetime.datetime.strptime(article['publishedAt'].split('T')[0], "%Y-%m-%d").strftime("%d:%m:%Y")
                     })## + date created"""
 
             except Exception as e:

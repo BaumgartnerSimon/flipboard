@@ -18,9 +18,7 @@ import string
 
 import bson
 
-#magazine privé public, liste, lien / article -> récupérer
-#links
-#topic -> ajouter liste
+import datetime
 
 
 app = Flask(__name__)
@@ -58,25 +56,7 @@ def about():
     return jsonify({
         'success': True,
         'data': {
-            'favorites': ['news', 'technology', 'sports', 'business', 'politics',
-                          'celebrity news', 'recipes', 'science', 'design', 'weather',
-                          "women's news", 'photography', 'compuer science', 'travel',
-                          'healthy eating', 'fashion', 'beauty', 'mindfulness',
-                          'world economy', 'sustainability', 'street art', 'music',
-                          'music festivals', 'tv', 'movies', 'cool stuff', 'workouts',
-                          'home', 'classical music', 'fortune 500', 'gaming',
-                          'electric vehicles', 'leadership', 'food & dining',
-                          'national parks', 'startups', 'health', 'digital photography',
-                          'breakthroughs', 'autos', 'advertising', 'road trips', 'books',
-                          'running', 'foreign policy', 'education', 'new york city',
-                          'architecture', 'yoga', 'dogs', 'parenting', 'basketball',
-                          'entrepreneurship', 'tiny house movement', 'middle east',
-                          'self-improvement', 'cycling', 'us congress apps', 'star wars',
-                          'personal finance', 'diy', 'sleep', 'green living', 'nfl',
-                          'space', 'coffee', 'outdoors', 'gardening', "how-to's", 'writing',
-                          'crafting', 'motorsport', 'weddings', 'interior design', 'memes',
-                          'work-life balance'
-            ]
+            'favorites': CONFIG.FAVORITE_LST
         }
     })
 
@@ -214,7 +194,8 @@ def flip_to_magazine():
         'author': user['unique_login'],
         'image_link': image_link,
         'title': title,
-        'description': description
+        'description': description,
+        'date_created': datetime.datetime.now().strftime("%d:%m:%Y")
     })##date created
     return jsonify({'success': True, 'message': 'Successfully flipped to magazine'})
 
@@ -299,6 +280,28 @@ def get_favorites():
         return jsonify({'success': False, 'message': 'Please log in'})
     favorites = user['favorites']
     return jsonify({'success': True, 'message': 'ok', 'favorites': favorites})
+
+@app.route('/get_papers', methods=['GET'])
+def get_papers():
+    user = get_user(request.headers)
+    #if user is None:
+    #    return jsonify({'success': False, 'message': 'Please log in'})
+    #favorites = user['favorites']
+    favorite = request.args.get('favorite')
+
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    flips = mydb.flips
+    users = mydb.users
+    res = []
+    for i, flip in enumerate(flips.find({})):
+        if i > 98:
+            break
+        flip['_id'] = str(flip['_id'])
+        flip['author'] = users.find_one({'unique_login': flip['author']})['username']
+        res.append(flip)
+    return jsonify({'success': True, 'message': 'ok', 'papers': res})
+
 
 
 if __name__ == "__main__":
