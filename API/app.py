@@ -3,7 +3,7 @@ import mynews
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 
 import config
 import utils
@@ -55,9 +55,7 @@ def home():
 def about():
     return jsonify({
         'success': True,
-        'data': {
-            'favorites': CONFIG.FAVORITE_LST
-        }
+        'favorites': config.FAVORITE_LST
     })
 
 @app.route('/register', methods=['POST'])
@@ -195,8 +193,9 @@ def flip_to_magazine():
         'image_link': image_link,
         'title': title,
         'description': description,
-        'date_created': datetime.datetime.now().strftime("%d:%m:%Y")
-    })##date created
+        'date_created': datetime.datetime.now().strftime("%d:%m:%Y"),
+        'clicks': 0
+    })
     return jsonify({'success': True, 'message': 'Successfully flipped to magazine'})
 
 @app.route('/get_magazines', methods=['GET'])
@@ -242,9 +241,10 @@ def add_favorite():
     if user is None:
         return jsonify({'success': False, 'message': 'Please log in'})
     favorites = user['favorites']
+    if request.json['topic'] not in config.FAVORITE_LST:
+        return jsonify({'success': False, 'message': 'Please add an existing favorite'})
     if request.json['topic'] in favorites:
         return jsonify({'success': False, 'message': 'Already in favorite'})
-    ##verifier que le topic est dans la liste de topics
     favorites.append(request.json['topic'])
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
@@ -294,13 +294,29 @@ def get_papers():
     flips = mydb.flips
     users = mydb.users
     res = []
-    for i, flip in enumerate(flips.find({})):
+    for i, flip in enumerate(flips.find({}).sort('clicks', DESCENDING)):
         if i > 98:
             break
         flip['_id'] = str(flip['_id'])
         flip['author'] = users.find_one({'unique_login': flip['author']})['username']
         res.append(flip)
     return jsonify({'success': True, 'message': 'ok', 'papers': res})
+
+@app.route('/paper_click', methods=['POST'])
+def paper_click():
+    if not all(_ in request.json for _ in ('paper_id',)):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    flips = mydb.flips
+    myquery = {'_id': bson.objectid.ObjectId(request.json['paper_id'])}
+    newvalues = {'$inc': {'clicks': 1}}
+    flips.update_one(myquery, newvalues)
+    return jsonify({'success': True, 'message': 'ok'})
 
 
 

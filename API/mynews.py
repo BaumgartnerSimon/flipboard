@@ -99,8 +99,9 @@ while error:
                                   'image_link': article['urlToImage'],
                                   'title': article['title'],
                                   'description': article['description'],
-                                  'date_created': datetime.datetime.strptime(article['publishedAt'].split('T')[0], "%Y-%m-%d").strftime("%d:%m:%Y")
-                    })## + date created"""
+                                  'date_created': datetime.datetime.strptime(article['publishedAt'].split('T')[0], "%Y-%m-%d").strftime("%d:%m:%Y"),
+                                  'clicks': 0
+                    })
 
             except Exception as e:
                 print(e, file=sys.stderr)
