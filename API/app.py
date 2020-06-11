@@ -20,6 +20,8 @@ import bson
 
 import datetime
 
+from database import Database
+
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(128))
@@ -29,10 +31,11 @@ def get_user(header):
     try:
         if 'unique_login' not in header:
             return None
-        client = MongoClient(host=config.MONGO_API)
+        """client = MongoClient(host=config.MONGO_API)
         mydb = client['flipboard']
         users = mydb.users
-        return users.find_one({'unique_login': header['unique_login']})
+        return users.find_one({'unique_login': header['unique_login']})"""
+        return Database().get_user_from_unique_login(header['unique_login'])
     except:
         return None
 
@@ -62,28 +65,44 @@ def about():
 def register():
     if not all(_ in request.json for _ in ('password', 'username')):
         return jsonify({'success': False, 'message': 'Please provide all informations'})
-    client = MongoClient(host=config.MONGO_API)
+    """client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
     existing_user = users.find_one({'username': request.json['username']})
     if existing_user is None:
         hashpass = bcrypt.hashpw(request.json['password'].encode('utf-8'), bcrypt.gensalt())
         users.insert({'username': request.json['username'], 'password': hashpass, 'unique_login': utils.generate_unique_login(), 'veified': False, 'favorites': []})
+        return jsonify({'success': True, 'message': 'Registered successfully'})"""
+    try:
+        if Database().username_exists(request.json['username']):
+            return jsonify({'success': False, 'message': 'The username exists'})
+        Database().register_user(request.json['username'], request.json['password'])
         return jsonify({'success': True, 'message': 'Registered successfully'})
-    return jsonify({'success': False, 'message': 'The username exists'})
+    except:
+        return jsonify({'success': False, 'message': 'The username exists'})
 
 @app.route('/login', methods=['POST'])
 def login():
     if not all(_ in request.json for _ in ('password', 'username')):
         return jsonify({'success': False, 'message': 'please provide all informations'})
-    client = MongoClient(host=config.MONGO_API)
+    """client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
     login_user = users.find_one({'username': request.json['username']})
     if login_user:
         if bcrypt.hashpw(request.json['password'].encode('utf-8'), login_user['password']) == login_user['password']:
-            return jsonify({'success': True, 'message': 'Successfully logged in', 'username': login_user['username'], 'unique_login': login_user['unique_login']})
-    return jsonify({'success': False, 'message': 'Wrong username or password'})
+            return jsonify({'success': True, 'message': 'Successfully logged in', 'username': login_user['username'], 'unique_login': login_user['unique_login']})"""
+    try:
+        return jsonify(Database().login(request.json['username'], request.json['password']))
+    except:
+        return jsonify({'success': False, 'message': 'Wrong username or password'})
+
+@app.route('/get_username', methods=['GET'])
+def get_usernamee():
+    username = get_username(request.headers)
+    if username is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    return jsonify({'success': True, 'message': 'Got username', 'username': username})
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -98,7 +117,8 @@ def update_username():
         return jsonify({'success': False, 'message': 'Please log in'})
     if old_username == request.json['new_username']:
         return jsonify({'success': False, 'message': 'Same usernames'})
-    client = MongoClient(host=config.MONGO_API)
+    ##check si le new_username existe
+    """client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
 
@@ -107,6 +127,8 @@ def update_username():
         myquery = {'unique_login': request.headers['unique_login']}
         newvalues = {'$set': {'username': request.json['new_username']}}
         users.update_one(myquery, newvalues)
+        return jsonify({'success': True, 'message': 'Successfully updated username'})"""
+    if Database().update_username(old_username, request.json['new_username'], request.headers['unique_login']):
         return jsonify({'success': True, 'message': 'Successfully updated username'})
     return jsonify({'success': False, 'message': 'Could not update username'})
 
@@ -119,7 +141,7 @@ def update_password():
         return jsonify({'success': False, 'message': 'Please log in'})
     if request.json['old_password'] == request.json['new_password']:
         return jsonify({'success': False, 'message': 'Same passwords'})
-    client = MongoClient(host=config.MONGO_API)
+    """client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     users = mydb.users
     login_user = users.find_one({'username': username})
@@ -129,7 +151,9 @@ def update_password():
             myquery = {'unique_login': request.headers['unique_login']}
             newvalues = {'$set': {'password': hashpass}}
             users.update_one(myquery, newvalues)
-            return jsonify({'success': True, 'message': 'Updated password'})
+            return jsonify({'success': True, 'message': 'Updated password'})"""
+    if update_password(self, username, request.json['old_password'], request.json['new_password'], request.headers['unique_login']):
+        return jsonify({'success': True, 'message': 'Updated password'})
     return jsonify({'success': False, 'message': 'Could not update password'})
 
 ##follow magazine
@@ -193,8 +217,8 @@ def flip_to_magazine():
         'image_link': image_link,
         'title': title,
         'description': description,
-        'date_created': datetime.datetime.now().strftime("%d:%m:%Y"),
-        'clicks': 0
+        'date_created': datetime.datetime.now().strftime("%Y-%m-%d"),
+        'clicks': []
     })
     return jsonify({'success': True, 'message': 'Successfully flipped to magazine'})
 
@@ -254,6 +278,26 @@ def add_favorite():
     users.update_one(myquery, newvalues)
     return jsonify({'success': True, 'message': 'Successfully added favorite'})
 
+@app.route('/set_favlist', methods=['POST'])
+def set_favlist():
+    if not all(_ in request.json for _ in ('favorites',)):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    favorites = user['favorites']
+    if len(favorites) != len(request.json['favorites']):
+        return jsonify({'success': False, 'message': 'Favorites length changed'})
+    if set(favorites) != set(request.json['favorites']):
+        return jsonify({'success': False, 'message': 'Favorites changed'})
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    users = mydb.users
+    myquery = {'unique_login': request.headers['unique_login']}
+    newvalues = {'$set': {'favorites': request.json['favorites']}}
+    users.update_one(myquery, newvalues)
+    return jsonify({'success': True, 'message': 'Successfully changed favorites order'})
+
 @app.route('/remove_favorite', methods=['POST'])
 def remove_favorite():
     if not all(_ in request.json for _ in ('topic',)):
@@ -294,7 +338,15 @@ def get_papers():
     flips = mydb.flips
     users = mydb.users
     res = []
-    for i, flip in enumerate(flips.find({}).sort('clicks', DESCENDING)):
+    ##[('field1', DESCENDING), ('field2', DESCENDING)]
+    ##trier par date
+    ##https://stackoverflow.com/questions/36566166/sort-the-result-from-a-pymongo-query
+    #for i, flip in enumerate(flips.find({}).sort('clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
+    for i, flip in enumerate(flips.aggregate([
+            {'$match': {}},##public et privés du compte
+            {'$addFields': {'total_clicks': {'$size': "$clicks"}}},
+            {'$sort': {'date_created': DESCENDING, 'total_clicks': DESCENDING}}])):
+            #'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
         if i > 98:
             break
         flip['_id'] = str(flip['_id'])
@@ -303,7 +355,7 @@ def get_papers():
     return jsonify({'success': True, 'message': 'ok', 'papers': res})
 
 @app.route('/paper_click', methods=['POST'])
-def paper_click():
+def paper_click():###############################################################################mettre le nom de la personne qui a cliquer
     if not all(_ in request.json for _ in ('paper_id',)):
         return jsonify({'success': False, 'message': 'please provide all informations'})
     user = get_user(request.headers)
@@ -313,8 +365,17 @@ def paper_click():
     client = MongoClient(host=config.MONGO_API)
     mydb = client['flipboard']
     flips = mydb.flips
+    #myquery = {'_id': bson.objectid.ObjectId(request.json['paper_id'])}
+    #newvalues = {'$inc': {'clicks': 1}}
+    #flips.update_one(myquery, newvalues)
+    #print(f'flips: {flips}', file=sys.stderr)
+    #print(f'flips.clicks: {flips.clicks}', file=sys.stderr)
+    click_lst = flips.find_one({'_id': bson.objectid.ObjectId(request.json['paper_id'])})['clicks']
+    if request.headers['unique_login'] in click_lst:
+        return jsonify({'success': False, 'message': 'Already clicked'})
+    click_lst.append(request.headers['unique_login'])
     myquery = {'_id': bson.objectid.ObjectId(request.json['paper_id'])}
-    newvalues = {'$inc': {'clicks': 1}}
+    newvalues = {'$set': {'clicks': click_lst}}
     flips.update_one(myquery, newvalues)
     return jsonify({'success': True, 'message': 'ok'})
 
