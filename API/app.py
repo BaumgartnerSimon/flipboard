@@ -257,6 +257,28 @@ def get_magazines():
     #print(all_magazines, file=sys.stderr)
     return jsonify({'success': True, 'message': 'Success', 'magazines': all_magazines, 'private_magazines': priv_magazines})
 
+@app.route('/get_flips_from_magazines', methods=['GET'])
+def get_flips_from_magazines():
+    ##pas besoin d etre connecte sauf pour avoir les private magazines
+    client = MongoClient(host=config.MONGO_API)
+    mydb = client['flipboard']
+    magazines = mydb.magazines
+    flips = mydb.flips
+    magazine_id = request.args.get('magazine_id')
+    if magazine_id is None:
+        return jsonify({'success': False, 'message': 'Please add a magazine_id'})
+    magazine = magazines.find_one({'_id': bson.objectid.ObjectId(magazine_id)})
+    if magazine is None:
+        return jsonify({'success': False, 'message': 'Verify that the magazine_id exist'})
+    user = get_user(request.headers)
+    if (not magazine['public']) and (user is None or magazine['author'] != user['unique_login']):
+        return jsonify({'success': False, 'message': 'Access denied'})
+    res = []
+    for flip in flips.find({'magazine_id': magazine_id}):
+        flip['_id'] = str(flip['_id'])
+        res.append(flip)
+    return jsonify({'success': True, 'message': 'Success', 'flips': res})
+
 @app.route('/add_favorite', methods=['POST'])
 def add_favorite():
     if not all(_ in request.json for _ in ('topic',)):
