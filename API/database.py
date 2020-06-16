@@ -26,6 +26,9 @@ class Database:
         self.magazines = self.mydb.magazines
         self.flips = self.mydb.flips
 
+    def __del__(self):
+        self.client.close()
+
     def get_user_from_unique_login(self, unique_login):
         return self.users.find_one({'unique_login': unique_login})
 
@@ -36,7 +39,7 @@ class Database:
     def register_user(self, username, password, verified=False):
         hashpass = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         unique_login = utils.generate_unique_login()
-        self.users.insert({'username': username, 'password': hashpass, 'unique_login': utils.generate_unique_login(), 'veified': verified, 'favorites': []})
+        self.users.insert({'username': username, 'password': hashpass, 'unique_login': unique_login, 'veified': verified, 'favorites': []})
         return unique_login
 
     def login(self, username, password):
@@ -51,7 +54,7 @@ class Database:
         if login_user:
             myquery = {'unique_login': unique_login}
             newvalues = {'$set': {'username': new_username}}
-            users.update_one(myquery, newvalues)
+            self.users.update_one(myquery, newvalues)
             return True
         return False
 
@@ -62,7 +65,7 @@ class Database:
                 hashpass = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
                 myquery = {'unique_login': unique_login}
                 newvalues = {'$set': {'password': hashpass}}
-                users.update_one(myquery, newvalues)
+                self.users.update_one(myquery, newvalues)
                 return True
         return False
 
@@ -74,7 +77,8 @@ class Database:
 
     def get_magazine_id(self, title, description):
         mag = self.magazines.find_one({'title': title, 'description': description, 'public': True})
-        return str(mag['_id']), mag['author']
+        print(f'mag: {mag}', file=sys.stderr)
+        return str(mag['_id']), mag['title']
 
     def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%d")):
         dct = { 'magazine_id': magazine_id,
@@ -85,7 +89,8 @@ class Database:
                 'title': title,
                 'description': description,
                 'date_created': date_created,
-                'clicks': []
+                'clicks': [],
+                'public': self.get_magazine(magazine_id)['public']
         }
         try:
             myhtml = html2text.HTML2Text()
@@ -132,6 +137,7 @@ class Database:
         flips = []
         for flip in self.flips.find({'magazine_id': magazine_id}):
             flip['_id'] = str(flip['_id'])
+            flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
             flips.append(flip)
         return flips
 
@@ -152,7 +158,7 @@ class Database:
         fav_lst = user_favorites if favorite is None else [favorite]
         fav_lst = ['$' + fav for fav in fav_lst]
 
-        pipeline = [{'$match': {}},##public
+        pipeline = [{'$match': {'public': True}},##public
                     {'$addFields': {'total_clicks': {'$size': "$clicks"}}},
                     {'$addFields': {'actual_article': {'$or': date_check}}},##mettre sur une ligne
                     {'$addFields': {'fav_score': {'$sum': fav_lst}}},##mettre sur une ligne

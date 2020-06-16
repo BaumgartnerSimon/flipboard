@@ -21,20 +21,23 @@ import datetime
 
 def get_articles_from_source(source):
     page = 1
-    pageSize = 100
+    pageSize = 10#100
     url = (f"https://newsapi.org/v2/everything?sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
     response = requests.get(url)
     return response.json()['articles']
 
 def create_user_and_magazine(username, description):
-    mydb = Database()
+    #mydb = Database()
+    global mydb
+    print(f'username: {username}, description: {description}', file=sys.stderr)
     if not mydb.username_exists(username):
         unique_login = mydb.register_user(username, 'admin', verified=True)
         return mydb.add_magazine(username, description, True, unique_login), unique_login
     return mydb.get_magazine_id(username, description)
 
 def get_articles(source_id, magazine_id, unique_login):
-    mydb = Database()
+    #mydb = Database()
+    global mydb
     try:
         articles = get_articles_from_source(source_id)
         for article in articles:
@@ -45,6 +48,7 @@ def get_articles(source_id, magazine_id, unique_login):
     except Exception as e:
         print(e, file=sys.stderr)
 
+mydb = Database()
 url = (f"https://newsapi.org/v2/sources?language=en&apiKey={NEWSAPI_KEY}")
 error = True
 while error:
