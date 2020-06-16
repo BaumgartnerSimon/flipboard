@@ -78,7 +78,7 @@ class Database:
     def get_magazine_id(self, title, description):
         mag = self.magazines.find_one({'title': title, 'description': description, 'public': True})
         print(f'mag: {mag}', file=sys.stderr)
-        return str(mag['_id']), mag['title']
+        return str(mag['_id']), mag['author']
 
     def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%d")):
         dct = { 'magazine_id': magazine_id,
@@ -146,7 +146,7 @@ class Database:
         newvalues = {'$set': {'favorites': favorites}}
         self.users.update_one(myquery, newvalues)
 
-    def get_papers(self, favorite, user_favorites, max_paper_nb=99):
+    def get_papers(self, favorite, user_favorites, page, max_paper_nb=99):
         d = 2
         date_check = [{'$eq': ['$date_created', (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
 
@@ -170,10 +170,10 @@ class Database:
         ]
 
         res = []
-        for i, flip in enumerate(self.flips.aggregate(pipeline)):#{'actual_article': DESCENDING, 'total_clicks': DESCENDING, 'date_created': DESCENDING}}])):
+        for flip in list(self.flips.aggregate(pipeline))[(page-1)*max_paper_nb:page*max_paper_nb]:#{'actual_article': DESCENDING, 'total_clicks': DESCENDING, 'date_created': DESCENDING}}])):
                 #'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
-            if i > (max_paper_nb - 1):
-                break
+            #if i > (max_paper_nb - 1):
+            #    break
             flip['_id'] = str(flip['_id'])
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
             res.append(flip)

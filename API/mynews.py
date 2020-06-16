@@ -21,13 +21,12 @@ import datetime
 
 def get_articles_from_source(source):
     page = 1
-    pageSize = 10#100
+    pageSize = 40#100
     url = (f"https://newsapi.org/v2/everything?sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
     response = requests.get(url)
     return response.json()['articles']
 
 def create_user_and_magazine(username, description):
-    #mydb = Database()
     global mydb
     print(f'username: {username}, description: {description}', file=sys.stderr)
     if not mydb.username_exists(username):
@@ -36,7 +35,6 @@ def create_user_and_magazine(username, description):
     return mydb.get_magazine_id(username, description)
 
 def get_articles(source_id, magazine_id, unique_login):
-    #mydb = Database()
     global mydb
     try:
         articles = get_articles_from_source(source_id)
@@ -48,6 +46,8 @@ def get_articles(source_id, magazine_id, unique_login):
     except Exception as e:
         print(e, file=sys.stderr)
 
+import time
+time1 = time.time()
 mydb = Database()
 url = (f"https://newsapi.org/v2/sources?language=en&apiKey={NEWSAPI_KEY}")
 error = True
@@ -64,6 +64,8 @@ while error:
         _id, unique_login = create_user_and_magazine(source['name'], source['description'])
         get_articles(source['id'], _id, unique_login)
 
+time2 = time.time()
+print('function took {:.3f} ms'.format((time2-time1)*1000.0), file=sys.stderr)
 
 """text = 'some super news talking about food'
 total_scores = {key: (sum([1 for elem in lst if elem in text]) + 1 if key in text else 0) for key, lst in FAV_KEYWORDS.items()}

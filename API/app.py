@@ -216,7 +216,7 @@ def remove_favorite():
         return jsonify({'success': False, 'message': 'Please log in'})
     favorites = user['favorites']
     if not (request.json['topic'] in favorites):
-        return jsonify({'success': False, 'message': 'Favotite not found'})
+        return jsonify({'success': False, 'message': 'Favorite not found'})
     favorites.remove(request.json['topic'])
     Database().set_favorites(request.headers['unique_login'], favorites)
     return jsonify({'success': True, 'message': 'Successfully removed favorite'})
@@ -231,13 +231,33 @@ def get_favorites():
 
 @app.route('/get_papers', methods=['GET'])
 def get_papers():
+    if not all(_ in request.args for _ in ('page',)):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
     user = get_user(request.headers)
-    #if user is None:
-    #    return jsonify({'success': False, 'message': 'Please log in'})
-    #favorites = user['favorites']
     user_favorites = [] if user is None else user['favorites']
     favorite = request.args.get('favorite')
-    res = Database().get_papers(favorite, user_favorites)
+    page = 1
+    try:
+        page = int(request.args['page'])
+        if page < 1:
+            raise Exception('AAAA')
+    except:
+        return jsonify({'success': True, 'message': 'Please enter a page number'})
+    res = Database().get_papers(favorite, user_favorites, page)
+    return jsonify({'success': True, 'message': 'ok', 'papers': res})
+
+@app.route('/get_papers_from_topic', methods=['GET'])
+def get_papers_from_topic():
+    if not all(_ in request.args for _ in ('favorite', 'page')):
+        return jsonify({'success': False, 'message': 'please provide all informations'})
+    page = 1
+    try:
+        page = int(request.args['page'])
+        if page < 1:
+            raise Exception('AAAA')
+    except:
+        return jsonify({'success': True, 'message': 'Please enter a page number'})
+    res = Database().get_papers(request.args['favorite'], [], page)
     return jsonify({'success': True, 'message': 'ok', 'papers': res})
 
 @app.route('/paper_click', methods=['POST'])
