@@ -157,14 +157,7 @@ class Database:
 
     def get_papers(self, favorite, user_favorites, page, max_paper_nb=99):
         d = 2
-        ##split la date avec le T
-        #date_check = [{'$eq': ['$date_created', (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
         date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
-        print(date_check, file=sys.stderr)
-
-
-        ##si favorite is None
-        ##    get les favorites du user,
 
         ##get que les publics, pas cliqués, pas de l'utilisateur
         fav_lst = user_favorites if favorite is None else [favorite]
@@ -182,13 +175,12 @@ class Database:
                     {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
         ]
 
+        ##'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
+
         res = []
         all_flips = list(self.flips.aggregate(pipeline))
         print(f'len: {len(all_flips)}', file=sys.stderr)
-        for flip in all_flips[(page-1)*max_paper_nb:page*max_paper_nb]:#{'actual_article': DESCENDING, 'total_clicks': DESCENDING, 'date_created': DESCENDING}}])):
-                #'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
-            #if i > (max_paper_nb - 1):
-            #    break
+        for flip in all_flips[(page-1)*max_paper_nb:page*max_paper_nb]:
             flip['_id'] = str(flip['_id'])
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
             flip['date_created'] = self.make_date_great_again(flip['date_created'])

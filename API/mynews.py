@@ -1,7 +1,7 @@
 import sys
 import requests
 
-from config import MONGO_API, NEWSAPI_KEY, FAV_KEYWORDS
+from config import MONGO_API, NEWSAPI_KEY_LST, FAV_KEYWORDS
 import utils
 
 from database import Database
@@ -19,12 +19,21 @@ import datetime
 ##https://stackoverflow.com/questions/8897593/how-to-compute-the-similarity-between-two-text-documents
 ##
 
-def get_articles_from_source(source):
+def get_articles_from_source(source, idx):
     page = 1
     pageSize = 5#100
-    url = (f"https://newsapi.org/v2/everything?language=en&sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
+    url = (f"https://newsapi.org/v2/everything?language=en&sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY_LST[idx]}")
     response = requests.get(url)
-    return response.json()['articles']
+    articles = []
+    try:
+        articles = response.json()['articles']
+    except:
+        idx += 1
+        if idx >= len(NEWSAPI_KEY_LST):
+            print('ERROR! You made to much requests with every API KEYS')
+            return []
+        return get_articles_from_source(source, idx)
+    return articles
 
 def create_user_and_magazine(username, description):
     global mydb
@@ -34,10 +43,10 @@ def create_user_and_magazine(username, description):
         return mydb.add_magazine(username, description, True, unique_login), unique_login
     return mydb.get_magazine_id(username, description)
 
-def get_articles(source_id, magazine_id, unique_login):
+def get_articles(source_id, magazine_id, unique_login, idx):
     global mydb
     try:
-        articles = get_articles_from_source(source_id)
+        articles = get_articles_from_source(source_id, idx)
         for article in articles:
             if mydb.article_exists(magazine_id, unique_login, article['urlToImage'], article['title'], article['description']):
                 continue
@@ -49,12 +58,22 @@ def get_articles(source_id, magazine_id, unique_login):
 import time
 time1 = time.time()
 mydb = Database()
-url = (f"https://newsapi.org/v2/sources?language=en&apiKey={NEWSAPI_KEY}")
+idx = 0
 error = True
 while error:
+    url = (f"https://newsapi.org/v2/sources?language=en&apiKey={NEWSAPI_KEY_LST[idx]}")
     response = requests.get(url)
     error = True if response.json()['status'] != 'ok' else False
-    sources = response.json()['sources']
+    sources = []
+    try:
+        sources = response.json()['sources']
+    except:
+        idx += 1
+        if idx >= len(NEWSAPI_KEY_LST):
+            print('ERROR! You made to much requests with every API KEYS')
+            break
+        error = True
+        continue
     categories = {}
     for source in sources:
         if source['category'] in categories:
@@ -62,7 +81,7 @@ while error:
         else:
             categories[source['category']] = 1
         _id, unique_login = create_user_and_magazine(source['name'], source['description'])
-        get_articles(source['id'], _id, unique_login)
+        get_articles(source['id'], _id, unique_login, idx)
 
 time2 = time.time()
 print('function took {:.3f} ms'.format((time2-time1)*1000.0), file=sys.stderr)
