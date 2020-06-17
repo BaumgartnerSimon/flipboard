@@ -157,7 +157,10 @@ class Database:
 
     def get_papers(self, favorite, user_favorites, page, max_paper_nb=99):
         d = 2
-        date_check = [{'$eq': ['$date_created', (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
+        ##split la date avec le T
+        #date_check = [{'$eq': ['$date_created', (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
+        date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
+        print(date_check, file=sys.stderr)
 
 
         ##si favorite is None
