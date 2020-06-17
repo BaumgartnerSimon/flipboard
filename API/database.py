@@ -175,7 +175,8 @@ class Database:
                                             ('fav_score', DESCENDING),
                                             ('total_clicks', DESCENDING),
                                             ('date_created', DESCENDING)
-                    ])}
+                    ])},
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
         ]
 
         res = []
