@@ -28,3 +28,4 @@ w3lib==1.22.0
 webencodings==0.5.1
 Werkzeug==1.0.1
 html2text==2020.1.16
+timeago==1.0.14

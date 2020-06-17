@@ -7,7 +7,7 @@ import string
 
 import bson
 
-import datetime
+import timeago, datetime
 
 import sys
 
@@ -80,7 +80,7 @@ class Database:
         print(f'mag: {mag}', file=sys.stderr)
         return str(mag['_id']), mag['author']
 
-    def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%d")):
+    def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")):
         dct = { 'magazine_id': magazine_id,
                 'link': link,
                 'comment': comment,
@@ -97,7 +97,8 @@ class Database:
             myhtml.ignore_links = True
             myresponse = requests.get(link)
             text = myhtml.handle(myresponse.text).lower()
-            dct.update({key: (sum([1 for elem in lst if elem in text]) + 1 if key in text else 0) for key, lst in config.FAV_KEYWORDS.items()})
+            text = str(f'{text} {title} {title} {description}')
+            dct.update({key: (sum([text.count(elem) for elem in lst if elem in text]) + text.count(key) if key in text else 0) for key, lst in config.FAV_KEYWORDS.items()})
         except Exception as e:
             print(e, file=sys.stderr)
         self.flips.insert(dct)
@@ -146,6 +147,14 @@ class Database:
         newvalues = {'$set': {'favorites': favorites}}
         self.users.update_one(myquery, newvalues)
 
+    def make_date_great_again(self, dt):
+        dt = datetime.datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
+        now = datetime.datetime.now()
+        diff = now - dt
+        if diff.days < 0 or diff.seconds < 0:
+            return 'now'
+        return timeago.format(dt, now)
+
     def get_papers(self, favorite, user_favorites, page, max_paper_nb=99):
         d = 2
         date_check = [{'$eq': ['$date_created', (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
@@ -158,7 +167,7 @@ class Database:
         fav_lst = user_favorites if favorite is None else [favorite]
         fav_lst = ['$' + fav for fav in fav_lst]
 
-        pipeline = [{'$match': {'public': True}},##public
+        pipeline = [{'$match': {'public': True}},
                     {'$addFields': {'total_clicks': {'$size': "$clicks"}}},
                     {'$addFields': {'actual_article': {'$or': date_check}}},##mettre sur une ligne
                     {'$addFields': {'fav_score': {'$sum': fav_lst}}},##mettre sur une ligne
@@ -170,12 +179,15 @@ class Database:
         ]
 
         res = []
-        for flip in list(self.flips.aggregate(pipeline))[(page-1)*max_paper_nb:page*max_paper_nb]:#{'actual_article': DESCENDING, 'total_clicks': DESCENDING, 'date_created': DESCENDING}}])):
+        all_flips = list(self.flips.aggregate(pipeline))
+        print(f'len: {len(all_flips)}', file=sys.stderr)
+        for flip in all_flips[(page-1)*max_paper_nb:page*max_paper_nb]:#{'actual_article': DESCENDING, 'total_clicks': DESCENDING, 'date_created': DESCENDING}}])):
                 #'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
             #if i > (max_paper_nb - 1):
             #    break
             flip['_id'] = str(flip['_id'])
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
+            flip['date_created'] = self.make_date_great_again(flip['date_created'])
             res.append(flip)
         return res
 

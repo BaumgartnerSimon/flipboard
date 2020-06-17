@@ -21,8 +21,8 @@ import datetime
 
 def get_articles_from_source(source):
     page = 1
-    pageSize = 40#100
-    url = (f"https://newsapi.org/v2/everything?sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
+    pageSize = 5#100
+    url = (f"https://newsapi.org/v2/everything?language=en&sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY}")
     response = requests.get(url)
     return response.json()['articles']
 
@@ -42,7 +42,7 @@ def get_articles(source_id, magazine_id, unique_login):
             if mydb.article_exists(magazine_id, unique_login, article['urlToImage'], article['title'], article['description']):
                 continue
             print({'magazine_id': magazine_id, 'link': article['url'], 'comment': '', 'author': unique_login, 'image_link': article['urlToImage'], 'title': article['title'], 'description': article['description']}, file=sys.stderr)
-            mydb.new_flip(magazine_id, article['url'], '', unique_login, article['urlToImage'], article['title'], article['description'], article['publishedAt'].split('T')[0])
+            mydb.new_flip(magazine_id, article['url'], '', unique_login, article['urlToImage'], article['title'], article['description'], article['publishedAt'].split('Z')[0])
     except Exception as e:
         print(e, file=sys.stderr)
 
