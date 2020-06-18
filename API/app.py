@@ -243,8 +243,8 @@ def get_papers():
             raise Exception('AAAA')
     except:
         return jsonify({'success': True, 'message': 'Please enter a page number'})
-    res = Database().get_papers(favorite, user_favorites, page)
-    return jsonify({'success': True, 'message': 'ok', 'papers': res})
+    res, nb_pages = Database().get_papers(favorite, user_favorites, page)
+    return jsonify({'success': True, 'message': 'ok', 'papers': res, 'nb_pages': nb_pages})
 
 @app.route('/get_papers_from_topic', methods=['GET'])
 def get_papers_from_topic():
@@ -257,8 +257,8 @@ def get_papers_from_topic():
             raise Exception('AAAA')
     except:
         return jsonify({'success': True, 'message': 'Please enter a page number'})
-    res = Database().get_papers(request.args['favorite'], [], page)
-    return jsonify({'success': True, 'message': 'ok', 'papers': res})
+    res, nb_pages = Database().get_papers(request.args['favorite'], [], page)
+    return jsonify({'success': True, 'message': 'ok', 'papers': res, 'nb_pages': nb_pages})
 
 @app.route('/paper_click', methods=['POST'])
 def paper_click():

@@ -5,6 +5,8 @@ import bcrypt
 import random
 import string
 
+import math
+
 import bson
 
 import timeago, datetime
@@ -134,10 +136,16 @@ class Database:
         return self.magazines.find_one({'_id': bson.objectid.ObjectId(magazine_id)})
 
     def get_flips_from_magazine_id(self, magazine_id):
+        pipeline = [{'$match': {'magazine_id': magazine_id}},
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
+        ]
+
         flips = []
-        for flip in self.flips.find({'magazine_id': magazine_id}):
+        #for flip in self.flips.find({'magazine_id': magazine_id}):
+        for flip in list(self.flips.aggregate(pipeline)):
             flip['_id'] = str(flip['_id'])
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
+            flip['date_created'] = self.make_date_great_again(flip['date_created'])
             flips.append(flip)
         return flips
 
@@ -184,7 +192,8 @@ class Database:
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
             flip['date_created'] = self.make_date_great_again(flip['date_created'])
             res.append(flip)
-        return res
+        page_nb = math.ceil(len(all_flips) / float(max_paper_nb))
+        return res, page_nb
 
     def add_click(self, paper_id, unique_login):
         click_lst = self.flips.find_one({'_id': bson.objectid.ObjectId(paper_id)})['clicks']

@@ -59,7 +59,7 @@ import time
 time1 = time.time()
 mydb = Database()
 idx = 0
-error = True
+error = False
 while error:
     url = (f"https://newsapi.org/v2/sources?language=en&apiKey={NEWSAPI_KEY_LST[idx]}")
     response = requests.get(url)
