@@ -48,7 +48,7 @@ def get_articles(source_id, magazine_id, unique_login, idx):
     try:
         articles = get_articles_from_source(source_id, idx)
         for article in articles:
-            if mydb.article_exists(magazine_id, unique_login, article['urlToImage'], article['title'], article['description']):
+            if mydb.article_exists(magazine_id, article['urlToImage'], article['title'], article['description']):
                 continue
             print({'magazine_id': magazine_id, 'link': article['url'], 'comment': '', 'author': unique_login, 'image_link': article['urlToImage'], 'title': article['title'], 'description': article['description']}, file=sys.stderr)
             mydb.new_flip(magazine_id, article['url'], '', unique_login, article['urlToImage'], article['title'], article['description'], article['publishedAt'].split('Z')[0])

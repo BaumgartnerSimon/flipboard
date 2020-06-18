@@ -103,11 +103,10 @@ class Database:
             print(e, file=sys.stderr)
         self.flips.insert(dct)
 
-    def article_exists(self, magazine_id, unique_login, image_link, title, description):
+    def article_exists(self, magazine_id, image_link, title, description):
         return self.flips.find_one({
             'magazine_id': magazine_id,
             'comment': '',
-            'author': unique_login,
             'image_link': image_link,
             'title': title,
             'description': description
@@ -118,7 +117,7 @@ class Database:
         for magazine in self.magazines.find({'public': True}):
             magazine['_id'] = str(magazine['_id'])
             magazine['author'] = self.users.find_one({'unique_login': magazine['author']})['username']
-            magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
+            #magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
             all_magazines.append(magazine)
         return all_magazines
 
@@ -127,7 +126,7 @@ class Database:
         for magazine in self.magazines.find({'public': False, 'author': unique_login}):
             magazine['_id'] = str(magazine['_id'])
             magazine['author'] = self.users.find_one({'unique_login': magazine['author']})['username']
-            magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
+            #magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
             priv_magazines.append(magazine)
         return priv_magazines
 
