@@ -97,7 +97,7 @@ class Database:
         try:
             myhtml = html2text.HTML2Text()
             myhtml.ignore_links = True
-            myresponse = requests.get(link)
+            myresponse = requests.get(link, allow_redirects=False, timeout=10)
             text = myhtml.handle(myresponse.text).lower()
             text = str(f'{text} {title} {title} {description}')
             dct.update({key: (sum([text.count(elem) for elem in lst if elem in text]) + text.count(key) if key in text else 0) for key, lst in config.FAV_KEYWORDS.items()})
