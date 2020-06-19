@@ -1,25 +1,28 @@
 import React from 'react';
 import { withRouter } from 'react-router-dom'
-import {Button, CircularProgress, Divider, Snackbar, TextField, Typography, withStyles} from "@material-ui/core";
-import MuiAlert  from '@material-ui/lab/Alert';
+import {
+    Button,
+    Divider,
+    TextField,
+    Typography,
+    withStyles
+} from "@material-ui/core";
 import '../styles/Login.css'
 import Link from "@material-ui/core/Link";
-
-function Alert(props) {
-    return <MuiAlert elevation={6} variant="filled" {...props} />;
-}
+import axios from "axios";
 
 const StyledButton = withStyles({
     root: {
         color: 'white',
         display: 'flex',
         textTransform: 'none',
-        background: "#F52828",
+        background: "#E00A0A",
         '&:hover': {
-            background: "#E00A0A",
+            background: "#CC0000",
         },
     },
 })(Button);
+
 
 class LoginForm extends React.Component {
     constructor(props) {
@@ -28,30 +31,46 @@ class LoginForm extends React.Component {
             username: "",
             password: "",
             success: false,
+            usernameFocused: false,
+            passwordFocused: false,
             error: false,
             message: "",
         }
     }
 
-    handleButtonClick = () => {
-        this.props.history.push('/home')
-    };
 
-    handleClose = (_event, reason) => {
-        if (reason === 'clickaway') {
-            return;
-        }
-        this.setState({error: false});
-        this.setState({success: false});
+    login(id, url) {
+        axios.post('http://localhost:5000/login', {
+            username: this.state.username,
+            password: this.state.password
+        }, {})
+            .then(res => {
+                console.log("RESPONSE GET BOARD", res.data)
+                if (res.data.success) {
+                    this.props.setSuccess(true);
+                    this.props.setMessage(res.data.message);
+                    console.log(res.data.unique_login);
+                    localStorage.setItem("id", res.data.unique_login);
+                    this.props.history.push("/")
+                } else {
+                    this.props.setError(true);
+                    this.props.setMessage(res.data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err)
+            })
+    }
+
+    handleButtonClick = () => {
+        this.login();
     };
 
     render() {
-        const vertical = 'top'
-        const horizontal = 'center'
         const formValid = (this.state.username !== "" && this.state.password !== "")
 
         return (
-            <div style={{ width: "40vh", margin: "20px"}}>
+            <div style={{ width: "35vh", margin: "20px"}}>
                 <div
                     style={{
                         display: "flex",
@@ -60,37 +79,39 @@ class LoginForm extends React.Component {
                     }}
                 >
                     <div style={{display: 'flex', justifyContent: "center", marginBottom: '20px'}}>
-                        <img src="./logoFlip.png" />
+                        <img alt={"Logo"} src="./logoFlip.png" />
                     </div>
-                    <Typography variant="h6" gutterBottom style={{fontWeight: 'bold', color: "black", display: "flex", justifyContent: "center"}}>
+                    <Typography variant="h6" gutterBottom style={{fontFamily: 'HelveticaNeueBold', fontWeight: '900',color: "black", display: "flex", justifyContent: "center"}}>
                         LOG IN TO FLIPBOARD
                     </Typography>
-                    <TextField
-                        className={"textField"}
-                        id="standard-basic"
-                        style={{marginTop: "8px", marginBottom: "8px"}}
-                        label="Enter username"
-                        variant="outlined"
-                        autoFocus
-                        value={this.state.username}
-                        onChange={(sender) => this.setState({username: sender.target.value})}
-                    />
-                    <TextField
-                        className={"textField"}
-                        id="standard-password-input"
-                        style={{marginTop: "8px", marginBottom: "8px"}}
-                        type="password"
-                        variant="outlined"
-                        label="Enter password"
-                        value={this.state.password}
-                        onChange={(sender) => this.setState({password: sender.target.value})}
-                    />
+                    <div style={{display: "flex", flexDirection: 'column', alignItems: "center"}}>
+                        <TextField
+                            className={"textField"}
+                            id="standard-basic"
+                            style={{width: '312px', marginTop: "8px", marginBottom: "8px"}}
+                            label="Enter username"
+                            variant="outlined"
+                            autoFocus
+                            value={this.state.username}
+                            onChange={(sender) => this.setState({username: sender.target.value})}
+                        />
+                        <TextField
+                            className={"textField"}
+                            id="standard-password-input"
+                            style={{width: '312px', marginTop: "8px", marginBottom: "8px"}}
+                            type="password"
+                            variant="outlined"
+                            label="Enter password"
+                            value={this.state.password}
+                            onChange={(sender) => this.setState({password: sender.target.value})}
+                        />
+                    </div>
                     <div style={{display: "flex", justifyContent: "center"}}>
                         <StyledButton
                             disabled={!formValid}
                             color="primary"
                             variant="contained"
-                            style={{ fontSize: '20px', width: '360px', height: '50px', marginTop: "20px", marginBottom: "20px"}}
+                            style={{ fontSize: '20px', width: '312px', height: '50px', marginTop: "20px", marginBottom: "20px"}}
                             onClick={() =>  {
                                 this.handleButtonClick();
                             }}
@@ -107,16 +128,6 @@ class LoginForm extends React.Component {
                             </Link>
                         </Typography>
                     </div>
-                    <Snackbar anchorOrigin={{vertical, horizontal}} open={this.state.success} autoHideDuration={6000} onClose={this.handleClose}>
-                        <Alert onClose={this.handleClose} severity="success">
-                            {this.state.message}
-                        </Alert>
-                    </Snackbar>
-                    <Snackbar anchorOrigin={{vertical, horizontal}} open={this.state.error} autoHideDuration={6000} onClose={this.handleClose}>
-                        <Alert onClose={this.handleClose} severity="error">
-                            {this.state.message}
-                        </Alert>
-                    </Snackbar>
                 </div>
             </div>
         );

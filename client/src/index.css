@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'AvenirNextMedium',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -19,7 +19,18 @@ body {
   font-family: 'HelveticaNeueThin';
   src: local('HelveticaNeue-Condensed'), url("./assets/fonts/HelveticaNeue-Condensed Thin.ttf") format('truetype');
 }
-
+@font-face {
+  font-family: 'AvenirNextMedium';
+  src: local('AvenirNext'), url("./assets/fonts/AvenirNext-Medium.ttf") format('truetype');
+}
+@font-face {
+  font-family: 'AvenirNextCondensedMedium';
+  src: local('AvenirNext'), url("./assets/fonts/AvenirNextCondensed-Medium.ttf") format('truetype');
+}
+@font-face {
+  font-family: 'TiemposHeadline';
+  src: local('TiemposHeadline'), url("./assets/fonts/TiemposHeadlineTest-Regular.otf") format('opentype');
+}
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

@@ -3,21 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emotion/styled": "^10.0.27",
     "@material-ui/core": "^4.9.9",
     "@material-ui/icons": "^4.9.1",
-    "@material-ui/styles": "^4.9.6",
     "@material-ui/lab": "^4.0.0-alpha.52",
+    "@material-ui/styles": "^4.9.6",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
     "axios": "^0.19.2",
+    "clsx": "latest",
+    "js-sha256": "^0.9.0",
     "react": "^16.13.1",
+    "react-beautiful-dnd": "^13.0.0",
     "react-dom": "^16.13.1",
     "react-scripts": "1.1.4",
     "react-virtualized": "^9.21.2",
     "react-window": "^1.8.5",
-    "recharts": "^1.8.5",
-    "js-sha256": "^0.9.0"
+    "recharts": "^1.8.5"
   },
   "scripts": {
     "start": "react-scripts start",

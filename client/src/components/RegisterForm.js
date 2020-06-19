@@ -1,12 +1,8 @@
 import React from 'react';
-import {Button, CircularProgress, Divider, Snackbar, TextField, Typography, withStyles} from "@material-ui/core";
-import MuiAlert  from '@material-ui/lab/Alert';
+import {Button, Divider, TextField, Typography, withStyles} from "@material-ui/core";
 import '../styles/Register.css'
 import Link from "@material-ui/core/Link";
-
-function Alert(props) {
-    return <MuiAlert elevation={6} variant="filled" {...props} />;
-}
+import axios from "axios";
 
 const StyledButton = withStyles({
     root: {
@@ -28,23 +24,39 @@ export default class RegisterForm extends React.Component {
             email: "",
             password: "",
             cPassword: "",
-            success: false,
-            error: false,
-            message: "",
         }
     }
 
     handleButtonClick = () => {
-        this.props.setDisplayRegister(false);
+        this.register();
     };
 
+    register() {
+        axios.post('http://localhost:5000/register', {
+            username: this.state.username,
+            password: this.state.password
+        }, {})
+            .then(res => {
+                console.log("RESPONSE GET BOARD", res.data)
+                if (res.data.success) {
+                    this.props.setSuccess(true);
+                    this.props.setMessage(res.data.message);
+                    this.props.setDisplayRegister(false);
+                } else {
+                    this.props.setError(true);
+                    this.props.setMessage(res.data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err)
+            })
+    }
+
     render() {
-        const vertical = 'top'
-        const horizontal = 'center'
         const formValid = (this.state.username !== "" && this.state.password !== "" && this.state.cPassword === this.state.password)
 
         return (
-            <div style={{ width: "40vh", margin: "20px"}}>
+            <div style={{ width: "35vh", margin: "20px"}}>
                 <div
                     style={{
                         display: "flex",
@@ -53,15 +65,15 @@ export default class RegisterForm extends React.Component {
                     }}
                 >
                     <div style={{display: 'flex', justifyContent: "center", marginBottom: '20px'}}>
-                        <img src="./logoFlip.png" />
+                        <img alt={"Logo"} src="./logoFlip.png" />
                     </div>
-                    <Typography variant="h6" gutterBottom style={{fontWeight: 'bold', color: "black", display: "flex", justifyContent: "center"}}>
+                    <Typography variant="h6" gutterBottom style={{fontFamily: 'HelveticaNeueBold', fontSize: '22px', fontWeight: 'bold', color: "black", display: "flex", justifyContent: "center"}}>
                         JOIN FLIPBOARD
                     </Typography>
                     <TextField
                         required
                         className="textField"
-                        style={{marginTop: "8px", marginBottom: "8px"}}
+                        style={{width: '312px', marginTop: "8px", marginBottom: "8px"}}
                         id="nameRegister"
                         label="Enter username"
                         variant="outlined"
@@ -72,7 +84,7 @@ export default class RegisterForm extends React.Component {
                     <TextField
                         required
                         className={"textField"}
-                        style={{marginTop: "8px", marginBottom: "8px"}}
+                        style={{width: '312px', marginTop: "8px", marginBottom: "8px"}}
                         id="standard-password-input"
                         type="password"
                         variant="outlined"
@@ -83,7 +95,7 @@ export default class RegisterForm extends React.Component {
                     <TextField
                         required
                         className={"textField"}
-                        style={{marginTop: "8px", marginBottom: "8px"}}
+                        style={{width: '312px', marginTop: "8px", marginBottom: "8px"}}
                         id="standard-confirm-password-input"
                         type="password"
                         variant="outlined"
@@ -113,16 +125,6 @@ export default class RegisterForm extends React.Component {
                             </Link>
                         </Typography>
                     </div>
-                    <Snackbar anchorOrigin={{vertical, horizontal}} open={this.state.success} autoHideDuration={6000} onClose={this.handleClose}>
-                        <Alert onClose={this.handleClose} severity="success">
-                            {this.state.message}
-                        </Alert>
-                    </Snackbar>
-                    <Snackbar anchorOrigin={{vertical, horizontal}} open={this.state.error} autoHideDuration={6000} onClose={this.handleClose}>
-                        <Alert onClose={this.handleClose} severity="error">
-                            {this.state.message}
-                        </Alert>
-                    </Snackbar>
                 </div>
             </div>
 

@@ -5,6 +5,8 @@ import './assets/fonts/HelveticaNeue-Condensed.ttf'
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 
+console.log("OUI SET LOGIN");
+
 ReactDOM.render(
   <React.StrictMode>
     <App />
