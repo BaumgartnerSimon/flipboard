@@ -19,6 +19,8 @@ import utils
 import html2text
 import requests
 
+import numpy as np
+
 
 class Database:
     def __init__(self):
@@ -52,6 +54,9 @@ class Database:
         return {'success': False, 'message': 'Wrong username or password'}
 
     def update_username(self, old_username, new_username, unique_login):
+        user_exists = self.users.find_one({'username': new_username})
+        if user_exists:
+            return False
         login_user = self.users.find_one({'username': old_username})
         if login_user:
             myquery = {'unique_login': unique_login}
@@ -82,6 +87,14 @@ class Database:
         print(f'mag: {mag}', file=sys.stderr)
         return str(mag['_id']), mag['author']
 
+    def get_labels_items(self, dct):
+        labels, items = [], []
+        for key, val in dct.items():
+            labels.append(key)
+            items.append(val)
+        items = list(np.exp(items) / np.sum(np.exp(items))*100)
+        return dict(zip(labels, items))
+
     def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")):
         dct = { 'magazine_id': magazine_id,
                 'link': link,
@@ -100,7 +113,9 @@ class Database:
             myresponse = requests.get(link, allow_redirects=False, timeout=10)
             text = myhtml.handle(myresponse.text).lower()
             text = str(f'{text} {title} {title} {description}')
-            dct.update({key: (sum([text.count(elem) for elem in lst if elem in text]) + text.count(key) if key in text else 0) for key, lst in config.FAV_KEYWORDS.items()})
+            tmp = {key: (sum([text.count(elem) for elem in lst if elem in text]) + text.count(key) if key in text else 0) for key, lst in config.FAV_KEYWORDS.items()}
+            tmp = self.get_labels_items(tmp)
+            dct.update(tmp)
         except Exception as e:
             print(e, file=sys.stderr)
         self.flips.insert(dct)
@@ -119,7 +134,6 @@ class Database:
         for magazine in self.magazines.find({'public': True}):
             magazine['_id'] = str(magazine['_id'])
             magazine['author'] = self.users.find_one({'unique_login': magazine['author']})['username']
-            #magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
             all_magazines.append(magazine)
         return all_magazines
 
@@ -128,7 +142,6 @@ class Database:
         for magazine in self.magazines.find({'public': False, 'author': unique_login}):
             magazine['_id'] = str(magazine['_id'])
             magazine['author'] = self.users.find_one({'unique_login': magazine['author']})['username']
-            #magazine['flips'] = self.get_flips_from_magazine_id(magazine['_id'])
             priv_magazines.append(magazine)
         return priv_magazines
 
@@ -141,7 +154,6 @@ class Database:
         ]
 
         flips = []
-        #for flip in self.flips.find({'magazine_id': magazine_id}):
         for flip in list(self.flips.aggregate(pipeline)):
             flip['_id'] = str(flip['_id'])
             flip['author'] = self.users.find_one({'unique_login': flip['author']})['username']
@@ -162,27 +174,30 @@ class Database:
             return 'now'
         return timeago.format(dt, now)
 
-    def get_papers(self, favorite, user_favorites, page, max_paper_nb=99):
+    def get_papers(self, favorite, user_favorites, page, topic, unique_login, max_paper_nb=99):
         d = 2
         date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
 
-        ##get que les publics, pas cliqués, pas de l'utilisateur
-        fav_lst = user_favorites if favorite is None else [favorite]
-        fav_lst = ['$' + fav for fav in fav_lst]
+        try:
+            user_favorites.remove()
+        except:
+            pass
+        fav_lst =  [favorite] if topic else [favorite] + user_favorites
+        fav_lst = [{'$multiply': ['$' + fav, 2/(i+1)]} for i, fav in enumerate(fav_lst)]
+        print(f'favlist: {fav_lst}', file=sys.stderr)
 
-        pipeline = [{'$match': {'public': True}},
-                    {'$addFields': {'total_clicks': {'$size': "$clicks"}}},
-                    {'$addFields': {'actual_article': {'$or': date_check}}},##mettre sur une ligne
-                    {'$addFields': {'fav_score': {'$sum': fav_lst}}},##mettre sur une ligne
+        pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
+                    {'$addFields': {'total_clicks': {'$size': "$clicks"},
+                                    'actual_article': {'$or': date_check},
+                                    'fav_score': {'$sum': fav_lst}}},
+                    {'$match': {'fav_score': {'$gte': 1}}},
                     {'$sort': bson.son.SON([('actual_article', DESCENDING),
                                             ('fav_score', DESCENDING),
                                             ('total_clicks', DESCENDING),
                                             ('date_created', DESCENDING)
                     ])},
-                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'fav_score': 1}}
         ]
-
-        ##'clicks', DESCENDING)):####################################find que les publics, sans le meme auteur que le username, sans le meme clic
 
         res = []
         all_flips = list(self.flips.aggregate(pipeline))

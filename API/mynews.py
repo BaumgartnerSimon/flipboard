@@ -34,7 +34,6 @@ def get_articles_from_source(source, idx):
     return articles
 
 def create_user_and_magazine(username, description, mydb):
-    print(f'username: {username}, description: {description}', file=sys.stderr)
     if not mydb.username_exists(username):
         unique_login = mydb.register_user(username, 'admin', verified=True)
         return mydb.add_magazine(username, description, True, unique_login), unique_login
@@ -46,26 +45,25 @@ def get_articles(source_id, magazine_id, unique_login, idx, mydb):
         for article in articles:
             if mydb.article_exists(magazine_id, article['urlToImage'], article['title'], article['description']):
                 continue
-            print({'magazine_id': magazine_id, 'link': article['url'], 'comment': '', 'author': unique_login, 'image_link': article['urlToImage'], 'title': article['title'], 'description': article['description']}, file=sys.stderr)
+            print({'magazine_id': magazine_id,
+                   'link': article['url'],
+                   'comment': '',
+                   'author': unique_login,
+                   'image_link': article['urlToImage'],
+                   'title': article['title'],
+                   'description': article['description']
+            }, file=sys.stderr)
             mydb.new_flip(magazine_id, article['url'], '', unique_login, article['urlToImage'], article['title'], article['description'], article['publishedAt'].split('Z')[0])
     except Exception as e:
         print(e, file=sys.stderr)
 
-def process_url(input_queue):#source, mydb):
+def process_url(input_queue):
     mydb = Database()
     while True:
         source = input_queue.get()
-        #print(f'source after: {source}', file=sys.stderr)
         if source is None:
             break
-
-        #if source['category'] in categories:
-        #    categories[source['category']] += 1
-        #else:
-        #    categories[source['category']] = 1
-        print('creating user!', file=sys.stderr)
         _id, unique_login = create_user_and_magazine(source['name'], source['description'], mydb)
-        print('getting articles!', file=sys.stderr)
         get_articles(source['id'], _id, unique_login, idx, mydb)
 
 import time
@@ -96,17 +94,8 @@ while error:
             break
         error = True
         continue
-    #categories = {}
     for source in sources:
-        print(f'source before: {source}', file=sys.stderr)
         input_queue.put(source)
-        #process_url(source)
-        """if source['category'] in categories:
-            categories[source['category']] += 1
-        else:
-            categories[source['category']] = 1
-        _id, unique_login = create_user_and_magazine(source['name'], source['description'], mydb)
-        get_articles(source['id'], _id, unique_login, idx, mydb)"""
 
 for w in workers:
     input_queue.put(None)
