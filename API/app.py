@@ -270,6 +270,12 @@ def paper_click():
     success = Database().add_click(request.json['paper_id'], request.headers['unique_login'])
     return jsonify({'success': success, 'message': 'ok' if success else 'Already clicked'})
 
+@app.route("/test_clicked", methods=['POST'])
+def test_clicked():
+    user = get_user(request.headers)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Please log in'})
+    return jsonify({'success': True, 'message': 'ok', 'res': Database().find_clicked(user['unique_login'], 1)})
 
 if __name__ == "__main__":
     app.run(host=config.FLASK_HOST,

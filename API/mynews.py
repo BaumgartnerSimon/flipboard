@@ -19,7 +19,7 @@ import multiprocessing
 
 def get_articles_from_source(source, idx):
     page = 1
-    pageSize = 5#100
+    pageSize = 20#100
     url = (f"https://newsapi.org/v2/everything?language=en&sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY_LST[idx]}")
     response = requests.get(url)
     articles = []

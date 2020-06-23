@@ -181,15 +181,19 @@ class Database:
             user_favorites.remove()
         except:
             pass
-        fav_lst =  [favorite] if topic else [favorite] + user_favorites
+        print(f"favorite: {favorite}", file=sys.stderr)
+        print(f"user_favorites: {user_favorites}", file=sys.stderr)
+        print(f"topic: {topic}", file=sys.stderr)
+        fav_lst =  [favorite] if topic else ([favorite] if favorite else []) + user_favorites
+        print(f"fav_lst: {fav_lst}", file=sys.stderr)
         fav_lst = [{'$multiply': ['$' + fav, 2/(i+1)]} for i, fav in enumerate(fav_lst)]
-        print(f'favlist: {fav_lst}', file=sys.stderr)
+        print(f'fav_lst: {fav_lst}', file=sys.stderr)
 
         pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
                     {'$addFields': {'total_clicks': {'$size': "$clicks"},
                                     'actual_article': {'$or': date_check},
                                     'fav_score': {'$sum': fav_lst}}},
-                    {'$match': {'fav_score': {'$gte': 1}}},
+                    #{'$match': {'fav_score': {'$gte': 1}}},
                     {'$sort': bson.son.SON([('actual_article', DESCENDING),
                                             ('fav_score', DESCENDING),
                                             ('total_clicks', DESCENDING),
@@ -208,6 +212,36 @@ class Database:
             res.append(flip)
         page_nb = math.ceil(len(all_flips) / float(max_paper_nb))
         return res, page_nb
+
+    def find_clicked(self, unique_login, page, max_paper_nb=99):
+        ##get les articles cliques et les pas cliques de il y a 2 jours
+        ##pour chaque articles cliques
+        ##title
+        d = 2
+        date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
+
+        pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
+                    {'$addFields': {'total_clicks': {'$size': "$clicks"},
+                                    'actual_article': {'$or': date_check}}},
+                    {'$match': {'actual_article': True,
+                                '$in': [unique_login, '$clicks']}},
+                    {'$sort': bson.son.SON([('total_clicks', DESCENDING),
+                                            ('date_created', DESCENDING)
+                    ])},
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
+        ]
+
+        res = []
+        clicked_articles = list(self.flips.aggregate(pipeline))
+        print(f'len: {len(all_flips)}', file=sys.stderr)
+        for article in clicked_articles[(page-1)*max_paper_nb:page*max_paper_nb]:
+            article['_id'] = str(article['_id'])
+            article['author'] = self.users.find_one({'unique_login': article['author']})['username']
+            article['date_created'] = self.make_date_great_again(article['date_created'])
+            res.append(article)
+        page_nb = math.ceil(len(clicked_articles) / float(max_paper_nb))
+        return res, page_nb
+        pass
 
     def add_click(self, paper_id, unique_login):
         click_lst = self.flips.find_one({'_id': bson.objectid.ObjectId(paper_id)})['clicks']
