@@ -43,7 +43,7 @@ def get_articles(source_id, magazine_id, unique_login, idx, mydb):
     try:
         articles = get_articles_from_source(source_id, idx)
         for article in articles:
-            if mydb.article_exists(magazine_id, article['urlToImage'], article['title'], article['description']):
+            if mydb.article_exists(article['urlToImage'], article['title'], article['description']):
                 continue
             print({'magazine_id': magazine_id,
                    'link': article['url'],

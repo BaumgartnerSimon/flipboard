@@ -120,9 +120,8 @@ class Database:
             print(e, file=sys.stderr)
         self.flips.insert(dct)
 
-    def article_exists(self, magazine_id, image_link, title, description):
+    def article_exists(self, image_link, title, description):
         return self.flips.find_one({
-            'magazine_id': magazine_id,
             'comment': '',
             'image_link': image_link,
             'title': title,
