@@ -130,6 +130,7 @@ def flip_to_magazine():
     user = get_user(request.headers)
     if user is None:
         return jsonify({'success': False, 'message': 'Please log in'})
+    print(f'magazine_id: {request.json["magazine_id"]}', file=sys.stderr)
     existing_magazine = Database().get_magazine(request.json['magazine_id'])
     if existing_magazine is None:
         return jsonify({'success': False, 'message': 'Magazine_id is wrong'})

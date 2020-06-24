@@ -95,7 +95,7 @@ class Database:
         items = list(np.exp(items) / np.sum(np.exp(items))*100)
         return dict(zip(labels, items))
 
-    def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")):
+    def new_flip(self, magazine_id, link, comment, unique_login, image_link, title, description, date_created=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"), verified=False):
         dct = { 'magazine_id': magazine_id,
                 'link': link,
                 'comment': comment,
@@ -105,6 +105,7 @@ class Database:
                 'description': description,
                 'date_created': date_created,
                 'clicks': [],
+                'verified': verified,
                 'public': self.get_magazine(magazine_id)['public']
         }
         try:
@@ -121,12 +122,11 @@ class Database:
         self.flips.insert(dct)
 
     def article_exists(self, image_link, title, description):
-        return self.flips.find_one({
-            'comment': '',
+        return (self.flips.find_one({
             'image_link': image_link,
             'title': title,
             'description': description
-        }) is not None
+        }) is not None)
 
     def get_public_magazines_with_filps(self):
         all_magazines = []
@@ -149,7 +149,7 @@ class Database:
 
     def get_flips_from_magazine_id(self, magazine_id):
         pipeline = [{'$match': {'magazine_id': magazine_id}},
-                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'verified': 1}}
         ]
 
         flips = []
@@ -192,15 +192,23 @@ class Database:
         pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
                     {'$addFields': {'total_clicks': {'$size': "$clicks"},
                                     'actual_article': {'$or': date_check},
-                                    'fav_score': {'$sum': fav_lst}}},
-                    #{'$match': {'fav_score': {'$gte': 1}}},
+                                    'fav_score': {'$sum': fav_lst}}}
+        ] + ([] if fav_lst == [] else [{'$match': {'fav_score': {'$gte': 1}}}]) + [{'$sort': bson.son.SON([('actual_article', DESCENDING),
+                                                                                                           ('fav_score', DESCENDING),
+                                                                                                           ('total_clicks', DESCENDING),
+                                                                                                           ('date_created', DESCENDING)
+        ])}, {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'fav_score': 1, 'verified': 1}}]
+        """                    #{'$match': {'fav_score': {'$gte': 1}}},###probleme quand pas connecté -> fav_score = 0
                     {'$sort': bson.son.SON([('actual_article', DESCENDING),
                                             ('fav_score', DESCENDING),
                                             ('total_clicks', DESCENDING),
                                             ('date_created', DESCENDING)
                     ])},
                     {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'fav_score': 1}}
-        ]
+        ]"""
+
+        print(f"pipeline: {pipeline}", file=sys.stderr)
+        print(f"fav_lst: {fav_lst}", file=sys.stderr)
 
         res = []
         all_flips = list(self.flips.aggregate(pipeline))
@@ -214,26 +222,27 @@ class Database:
         return res, page_nb
 
     def find_clicked(self, unique_login, page, max_paper_nb=99):
-        ##get les articles cliques et les pas cliques de il y a 2 jours
         ##pour chaque articles cliques
-        ##title
+        ## -> ajouter un score a chaque article non clique en fonction des titres
+        ##trier les articles pas cliques par score
         d = 2
         date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
 
         pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
                     {'$addFields': {'total_clicks': {'$size': "$clicks"},
-                                    'actual_article': {'$or': date_check}}},
+                                    'actual_article': {'$or': date_check},
+                                    'user_has_clicked': {'$in': [unique_login, '$clicks']}}},
                     {'$match': {'actual_article': True,
-                                '$in': [unique_login, '$clicks']}},
+                                'user_has_clicked': True}},
                     {'$sort': bson.son.SON([('total_clicks', DESCENDING),
                                             ('date_created', DESCENDING)
                     ])},
-                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1}}
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'verified': 1}}
         ]
 
         res = []
         clicked_articles = list(self.flips.aggregate(pipeline))
-        print(f'len: {len(all_flips)}', file=sys.stderr)
+        print(f'len: {len(clicked_articles)}', file=sys.stderr)
         for article in clicked_articles[(page-1)*max_paper_nb:page*max_paper_nb]:
             article['_id'] = str(article['_id'])
             article['author'] = self.users.find_one({'unique_login': article['author']})['username']

@@ -13,13 +13,20 @@ import datetime
 
 import multiprocessing
 
+import re
+
 #{'general': 41, 'technology': 10, 'business': 7, 'sports': 11, 'entertainment': 8, 'health': 1, 'science': 3}
 ##https://stackoverflow.com/questions/8897593/how-to-compute-the-similarity-between-two-text-documents
 ##
 
+def cleanhtml(raw_html):
+  cleanr = re.compile('<.*?>')
+  cleantext = re.sub(cleanr, '', raw_html)
+  return ' '.join(cleantext.split())
+
 def get_articles_from_source(source, idx):
     page = 1
-    pageSize = 20#100
+    pageSize = 5#100
     url = (f"https://newsapi.org/v2/everything?language=en&sources={source}&pageSize={pageSize}&page={page}&apiKey={NEWSAPI_KEY_LST[idx]}")
     response = requests.get(url)
     articles = []
@@ -43,17 +50,27 @@ def get_articles(source_id, magazine_id, unique_login, idx, mydb):
     try:
         articles = get_articles_from_source(source_id, idx)
         for article in articles:
-            if mydb.article_exists(article['urlToImage'], article['title'], article['description']):
+            description = cleanhtml(article['description'])
+            title = cleanhtml(article['title'])
+            if mydb.article_exists(article['urlToImage'], title, description):
                 continue
             print({'magazine_id': magazine_id,
                    'link': article['url'],
                    'comment': '',
                    'author': unique_login,
                    'image_link': article['urlToImage'],
-                   'title': article['title'],
-                   'description': article['description']
+                   'title': title,
+                   'description': description
             }, file=sys.stderr)
-            mydb.new_flip(magazine_id, article['url'], '', unique_login, article['urlToImage'], article['title'], article['description'], article['publishedAt'].split('Z')[0])
+            mydb.new_flip(magazine_id,
+                          article['url'],
+                          '',
+                          unique_login,
+                          article['urlToImage'],
+                          title,
+                          description,
+                          article['publishedAt'].split('Z')[0],
+                          verified=True)
     except Exception as e:
         print(e, file=sys.stderr)
 

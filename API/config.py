@@ -15,7 +15,9 @@ from random import shuffle
 NEWSAPI_KEY_LST = ['f6eeeadb13f44a4f9f81e5ddb6a37ee4',
                    '7f2fa59074f546e2bc68587128812754',
                    '3e2d2a5313cf4208a83cb8c65d1e9677',
-                   'd39f218034e64188b180840208bc69d6']
+                   'd39f218034e64188b180840208bc69d6',
+                   'cb1fb10e11294ace92c4655efac0954e',
+                   '35b314de3a424230ad43882db4d5c0aa']
 shuffle(NEWSAPI_KEY_LST)
 
 FAVORITE_LST = ['news', 'technology', 'sports', 'business', 'politics',
