@@ -21,6 +21,8 @@ import requests
 
 import numpy as np
 
+from difflib import SequenceMatcher
+
 
 class Database:
     def __init__(self):
@@ -181,13 +183,12 @@ class Database:
             user_favorites.remove()
         except:
             pass
-        print(f"favorite: {favorite}", file=sys.stderr)
-        print(f"user_favorites: {user_favorites}", file=sys.stderr)
-        print(f"topic: {topic}", file=sys.stderr)
         fav_lst =  [favorite] if topic else ([favorite] if favorite else []) + user_favorites
-        print(f"fav_lst: {fav_lst}", file=sys.stderr)
         fav_lst = [{'$multiply': ['$' + fav, 2/(i+1)]} for i, fav in enumerate(fav_lst)]
-        print(f'fav_lst: {fav_lst}', file=sys.stderr)
+        if fav_lst == [] and (unique_login is not None):
+            print('getting results from clicked', file=sys.stderr)
+            return self.find_clicked(unique_login, page, max_paper_nb)
+        print('getting results', file=sys.stderr)
 
         pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
                     {'$addFields': {'total_clicks': {'$size': "$clicks"},
@@ -198,17 +199,6 @@ class Database:
                                                                                                            ('total_clicks', DESCENDING),
                                                                                                            ('date_created', DESCENDING)
         ])}, {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'fav_score': 1, 'verified': 1}}]
-        """                    #{'$match': {'fav_score': {'$gte': 1}}},###probleme quand pas connecté -> fav_score = 0
-                    {'$sort': bson.son.SON([('actual_article', DESCENDING),
-                                            ('fav_score', DESCENDING),
-                                            ('total_clicks', DESCENDING),
-                                            ('date_created', DESCENDING)
-                    ])},
-                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'fav_score': 1}}
-        ]"""
-
-        print(f"pipeline: {pipeline}", file=sys.stderr)
-        print(f"fav_lst: {fav_lst}", file=sys.stderr)
 
         res = []
         all_flips = list(self.flips.aggregate(pipeline))
@@ -221,10 +211,26 @@ class Database:
         page_nb = math.ceil(len(all_flips) / float(max_paper_nb))
         return res, page_nb
 
+    def find_not_clicked(self, unique_login):
+        d = 2
+        date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
+
+        pipeline = [{'$match': {'public': True, 'not_same_author': {'$ne': ['$author', unique_login]}}},
+                    {'$addFields': {'total_clicks': {'$size': "$clicks"},
+                                    'actual_article': {'$or': date_check},
+                                    'user_has_clicked': {'$in': [unique_login, '$clicks']}}},
+                    {'$match': {'actual_article': True,
+                                'user_has_clicked': False}},
+                    {'$sort': bson.son.SON([('total_clicks', DESCENDING),
+                                            ('date_created', DESCENDING)
+                    ])},
+                    {'$project': {'author': 1, 'comment': 1, 'date_created': 1, 'description': 1, 'image_link': 1, 'link': 1, 'magazine_id': 1, 'title': 1, 'verified': 1}}
+        ]
+        not_clicked_articles = list(self.flips.aggregate(pipeline))
+        return not_clicked_articles
+
     def find_clicked(self, unique_login, page, max_paper_nb=99):
-        ##pour chaque articles cliques
-        ## -> ajouter un score a chaque article non clique en fonction des titres
-        ##trier les articles pas cliques par score
+        not_clicked_articles = self.find_not_clicked(unique_login)
         d = 2
         date_check = [{'$eq': [{'$substr': ['$date_created', 0, 10]}, (datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")]} for i in range(d)]
 
@@ -243,14 +249,17 @@ class Database:
         res = []
         clicked_articles = list(self.flips.aggregate(pipeline))
         print(f'len: {len(clicked_articles)}', file=sys.stderr)
-        for article in clicked_articles[(page-1)*max_paper_nb:page*max_paper_nb]:
+        for unclicked in not_clicked_articles:
+            unclicked['score'] = sum(SequenceMatcher(None, unclicked['title'], clicked['title']).ratio() for clicked in clicked_articles)
+        not_clicked_articles = sorted(not_clicked_articles, key=lambda k: k['score'], reverse=True)
+
+        for article in not_clicked_articles[(page-1)*max_paper_nb:page*max_paper_nb]:
             article['_id'] = str(article['_id'])
             article['author'] = self.users.find_one({'unique_login': article['author']})['username']
             article['date_created'] = self.make_date_great_again(article['date_created'])
             res.append(article)
-        page_nb = math.ceil(len(clicked_articles) / float(max_paper_nb))
+        page_nb = math.ceil(len(not_clicked_articles) / float(max_paper_nb))
         return res, page_nb
-        pass
 
     def add_click(self, paper_id, unique_login):
         click_lst = self.flips.find_one({'_id': bson.objectid.ObjectId(paper_id)})['clicks']
