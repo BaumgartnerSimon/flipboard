@@ -17,7 +17,9 @@ NEWSAPI_KEY_LST = ['f6eeeadb13f44a4f9f81e5ddb6a37ee4',
                    '3e2d2a5313cf4208a83cb8c65d1e9677',
                    'd39f218034e64188b180840208bc69d6',
                    'cb1fb10e11294ace92c4655efac0954e',
-                   '35b314de3a424230ad43882db4d5c0aa']
+                   '35b314de3a424230ad43882db4d5c0aa',
+                   'edc9de7a20bb49349cc081ff4c59343c',
+                   '1258bde69dea40dd9587c727ab3e4e4d']
 shuffle(NEWSAPI_KEY_LST)
 
 FAVORITE_LST = ['news', 'technology', 'sports', 'business', 'politics',

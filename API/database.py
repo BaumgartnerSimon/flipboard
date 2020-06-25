@@ -185,7 +185,7 @@ class Database:
             pass
         fav_lst =  [favorite] if topic else ([favorite] if favorite else []) + user_favorites
         fav_lst = [{'$multiply': ['$' + fav, 2/(i+1)]} for i, fav in enumerate(fav_lst)]
-        if fav_lst == [] and (unique_login is not None):
+        if (fav_lst == [] or favorite is None) and (unique_login is not None):
             print('getting results from clicked', file=sys.stderr)
             return self.find_clicked(unique_login, page, max_paper_nb)
         print('getting results', file=sys.stderr)
