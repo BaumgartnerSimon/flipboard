@@ -18,6 +18,7 @@ export default class Section extends React.Component {
             open: false,
             url: "",
             magazines: [],
+            nbPages: 10
         }
     }
 
@@ -35,7 +36,7 @@ export default class Section extends React.Component {
         })
             .then(res => {
                 console.log("RESPONSE GET PAPER", res.data);
-                this.setState({load: true, papers: res.data.papers})
+                this.setState({load: true, papers: res.data.papers, nbPages: res.data.nb_pages})
             })
             .catch(err => {
                 console.error(err)
@@ -122,7 +123,7 @@ export default class Section extends React.Component {
                     }})}
                 {this.state.load &&
                 <div style={{marginBottom: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                    <Pagination page={this.state.page} count={10} onChange={this.changePage}/>
+                    <Pagination page={this.state.page} count={this.state.nbPages} onChange={this.changePage}/>
                 </div>}
             </div>
         );

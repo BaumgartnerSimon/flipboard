@@ -43,6 +43,7 @@ function TopBarProfile(props) {
                 style={{marginTop: '45px', marginLeft:'20px'}}
             >
                 <MenuItem style={{width: '150px', paddingTop: '10px', paddingBottom: '10px'}} onClick={() => {
+                    props.handleMenuClick();
                     props.handleClose();
                     props.history.push('/profile', {})}
                 }>
@@ -50,6 +51,7 @@ function TopBarProfile(props) {
                 </MenuItem>
                 <Divider />
                 <MenuItem style={{paddingTop: '10px', paddingBottom: '10px'}} onClick={() => {
+                    props.handleMenuClick();
                     props.handleClose();
                     props.history.push('/settings', {})}
                 }>

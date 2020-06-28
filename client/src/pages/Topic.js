@@ -8,12 +8,14 @@ import FlipIn from "../components/FlipIn";
 
 export default function Topic(props) {
     const [load, setLoad] = React.useState(false);
+    const [loaded, setLoaded] = React.useState(false);
     const [refresh, setRefresh] = React.useState(false);
     const [papers, setPapers] = React.useState([]);
     const [page, setPage] = React.useState([]);
     const [magazines, setMagazines] = React.useState([]);
     const [url, seturl] = React.useState("");
     const [open, setOpen] = React.useState(false);
+    const [nbPages, setNbPages] = React.useState(10)
 
     const getPapers = (page) => {
         axios.get('http://localhost:5000/get_papers_from_topic?favorite='+ props.match.params.id +'&page=' + page.toString(), {
@@ -22,9 +24,13 @@ export default function Topic(props) {
             }
         })
             .then(res => {
-                console.log("RESPONSE GET PAPER", res.data);
-                setLoad(true);
+                console.log("OUI LE LIEN", 'http://localhost:5000/get_papers_from_topic?favorite='+ props.match.params.id +'&page=' + page.toString());
+                console.log("RESPONSE GET PAPER", props.match.params.id,  res.data);
+                console.log("NBPAGES", res.data.nb_pages);
                 setPapers(res.data.papers);
+                setLoad(true);
+                setLoaded(true);
+                setNbPages(res.data.nb_pages)
             })
             .catch(err => {
                 console.error(err)
@@ -47,12 +53,14 @@ export default function Topic(props) {
     }
 
     useEffect(() => {
+        setLoad(false);
         getPapers(1)
-    }, []);
+        console.log("AAAAAAAAAAA", papers);
+    }, [props.match.params.id]);
 
     const changePage = (event, value) => {
-        setPage(value)
-        getPapers(value)
+        setPage(value);
+        getPapers(value);
         window.scrollTo(0, 0)
     }
 
@@ -97,9 +105,9 @@ export default function Topic(props) {
                 } else {
                     return null;
                 }})}
-            {this.state.load &&
+            {load &&
             <div style={{marginBottom: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                <Pagination page={page} count={10} onChange={changePage}/>
+                <Pagination page={page} count={nbPages} onChange={changePage}/>
             </div>}
         </div>
     );

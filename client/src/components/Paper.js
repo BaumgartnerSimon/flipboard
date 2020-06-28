@@ -8,6 +8,7 @@ import CardActions from "@material-ui/core/CardActions";
 import AddIcon from '@material-ui/icons/Add';
 import IconButton from "@material-ui/core/IconButton";
 import axios from "axios";
+import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -29,6 +30,7 @@ export default function Paper(props) {
     const classes = useStyles();
 
     const paperClick = (element) => {
+        console.log("ON CLIIIIIIIIIIIIIIIIICK");
         axios.post('http://localhost:5000/paper_click', {
             paper_id: element
         }, {
@@ -51,14 +53,14 @@ export default function Paper(props) {
         <div>
             <Card style={{ display: 'flex', flexDirection: 'column', elevation: 0, borderRadius: '0px', height: '666px'}}>
                 <a onClick={() => paperClick(props.paper._id)} style={{textDecoration: 'none'}} rel="noopener noreferrer" href={props.paper.link} target="_blank">
-                    {props.paper.image_link !== 'null' &&
+                    {props.paper.image_link !== 'null'  && props.paper.image_link !== null &&
                     <CardMedia
                         className={classes.media}
                         image={props.paper.image_link}
                         title="Paella dish"
                     />
                     }
-                    {props.paper.image_link === 'null' &&
+                    {(props.paper.image_link === 'null'  || props.paper.image_link === null) &&
                     <div style={{display:'flex', justifyContent:"center", alignItems: "center", backgroundColor: '#F7F7F7', height: '277px', width: 'auto'}}>
                         <svg role="img" aria-labelledby="logo-icon-title logo-icon-desc" className="logo--icon" width="120"
                              height="120" viewBox="0 0 100 100" shapeRendering="crispEdges"><title
@@ -80,7 +82,9 @@ export default function Paper(props) {
                         <Typography style={{fontSize: '22px', fontFamily: 'TiemposHeadline', fontWeight: 600}} gutterBottom variant="h5" component="h2">
                             {props.paper.title}
                         </Typography>
-                        <Typography style={{fontSize: '13px', fontFamily: 'AvenirNextMedium', fontWeight: 500, color: '#666'}}>
+                        <Typography style={{display: 'flex', alignItems: 'center', fontSize: '13px', fontFamily: 'AvenirNextMedium', fontWeight: 500, color: '#666'}}>
+                            {props.paper.verified &&
+                            <VerifiedUserIcon style={{width: "18px", marginRight: '5px', color: '#F52528'}}/>}
                             {props.paper.author}
                         </Typography>
                         <Typography style={{color: '#262626', marginTop: '16px', fontSize: '16px', fontFamily: 'AvenirNextMedium'}} variant="body2" color="textSecondary" component="p">

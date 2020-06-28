@@ -24,6 +24,7 @@ class TopBar extends React.Component {
             topics: [],
             description: 'The best of everything you follow',
             forYou: true,
+            noSelect: false,
             focusedTopic: "",
             selectedSection: false,
             drawerIsOpen: false,
@@ -53,11 +54,11 @@ class TopBar extends React.Component {
     };
 
     handleTopic = (index, element) => {
-        this.setState({forYou: false, selected: index, selectedSection: true, focusedTopic: element})
+        this.setState({noSelect: false, forYou: false, selected: index, selectedSection: true, focusedTopic: element})
     };
 
     handleForYou = () => {
-        this.setState({forYou: true, selectedSection: false})
+        this.setState({noSelect: false, forYou: true, selectedSection: false})
         this.props.history.push('/');
     }
 
@@ -90,6 +91,10 @@ class TopBar extends React.Component {
 
     handleEditClose = () => {
         this.setState({editOpen: false})
+    }
+
+    handleMenuClick = () => {
+        this.setState({noSelect: true, forYou: false});
     }
 
     getFavorites = () => {
@@ -165,7 +170,7 @@ class TopBar extends React.Component {
                                 return (
                                     <IconButton key={ind} style={{marginLeft: '-10px', marginRight: '-10px'}}
                                                 onClick={() => this.handleTopic(ind, element)}>
-                                        <Topic selected={!this.state.forYou && ind === this.state.selected}
+                                        <Topic selected={!this.state.noSelect && !this.state.forYou && ind === this.state.selected}
                                                topic={element.toUpperCase()}/>
                                     </IconButton>
                                 );
@@ -220,7 +225,7 @@ class TopBar extends React.Component {
                                     }}/>
                                 </IconButton>
                             </div>
-                            <TopBarProfile anchorEl={this.state.anchorEl} handleClose={this.handleMenuClose}/>
+                            <TopBarProfile anchorEl={this.state.anchorEl} handleMenuClick={this.handleMenuClick} handleClose={this.handleMenuClose}/>
                             {this.renderRedirect()}
                         </Toolbar>
                     </AppBar>
